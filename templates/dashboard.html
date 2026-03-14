@@ -255,8 +255,8 @@
                     const history = await response.json();
                     // Update Alpine data
                     const rootEl = document.querySelector('[x-data]');
-                    if (rootEl && rootEl.__x) {
-                        rootEl.__x.$data.commentaryHistory = history;
+                    if (rootEl && rootEl._x_dataStack) {
+                        rootEl._x_dataStack[0].commentaryHistory = history;
                     }
                 }
             } catch (error) {
