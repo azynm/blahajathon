@@ -135,6 +135,14 @@ def dashboard(dashboard_id):
 
     return render_template("dashboard.html", players=data)
 
+
+
+#Logout page
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     if 'access_token' not in session:
