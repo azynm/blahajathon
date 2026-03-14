@@ -48,14 +48,18 @@ import hashlib
 commentary_history = {}
 # Track last generation time per guild
 last_generated = {}
+# Track hash of last messages to detect changes
+last_message_hash = {}
 
 
 def collect_discord_events(dashboard_id):
-    """Fetch messages from all text channels in a guild and build a commentator events dict."""
+    """Fetch messages from all text channels in a guild and build a commentator events dict.
+    Returns (events_dict, messages_hash) tuple, or (None, None) on failure.
+    """
     headers = {"Authorization": f"Bot {BOT_TOKEN}"}
     r = requests.get(f"https://discord.com/api/v10/guilds/{dashboard_id}/channels", headers=headers)
     if r.status_code != 200:
-        return None
+        return None, None
 
     channels = r.json()
     text_channels = [c for c in channels if c["type"] == 0]
@@ -64,15 +68,20 @@ def collect_discord_events(dashboard_id):
     for c in text_channels:
         all_messages.extend(fetch_latest_messages(c["id"], headers))
 
+    # Create a hash of all messages to detect changes
+    msg_str = "|".join(f"{m['author']}:{m['content']}:{m['timestamp']}" for m in all_messages)
+    msg_hash = hashlib.md5(msg_str.encode()).hexdigest()
+
     sentiment = analyse_sentiment(all_messages)
     print(f"Discord analysis — sentiment: {sentiment}")
 
-    return {
+    events = {
         "discord_sentiment": sentiment,
         "discord_spam_count": 0,
         "recent_commits": [],
         "pull_requests_merged": 0,
     }
+    return events, msg_hash
 
 
 #Home screen
@@ -141,7 +150,7 @@ def dashboard(dashboard_id):
         return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
 
     #Collect Discord events and generate commentary
-    events = collect_discord_events(dashboard_id)
+    events, msg_hash = collect_discord_events(dashboard_id)
     print(f"DEBUG: events = {events}")
     if events:
         from commentator.commentator import determine_style, generate_script, generate_audio_from_text
@@ -171,6 +180,7 @@ def dashboard(dashboard_id):
             })
             commentary_history[dashboard_id] = commentary_history[dashboard_id][-10:]
             last_generated[dashboard_id] = timestamp
+            last_message_hash[dashboard_id] = msg_hash
             print(f"DEBUG: Commentary added to history!")
 
     with open('players.json', 'r') as file:
@@ -226,10 +236,13 @@ def commentary_history_api(dashboard_id):
     now = time.time()
     last_gen = last_generated.get(dashboard_id, 0)
 
-    # Regenerate if >60s since last generation
+    # Regenerate if >60s since last generation AND messages have changed
     if now - last_gen > 60:
-        events = collect_discord_events(dashboard_id)
-        if events:
+        events, msg_hash = collect_discord_events(dashboard_id)
+
+        # Only generate if we got events AND messages have changed
+        if events and msg_hash != last_message_hash.get(dashboard_id):
+            print(f"DEBUG: Messages changed! Old hash: {last_message_hash.get(dashboard_id)}, New hash: {msg_hash}")
             from commentator.commentator import determine_style, generate_script, generate_audio_from_text
             style = determine_style(events)
             script = generate_script(events, style=style)
@@ -251,6 +264,10 @@ def commentary_history_api(dashboard_id):
                 })
                 commentary_history[dashboard_id] = commentary_history[dashboard_id][-10:]
                 last_generated[dashboard_id] = timestamp
+                last_message_hash[dashboard_id] = msg_hash
+        else:
+            print(f"DEBUG: No new messages, skipping commentary generation")
+            last_generated[dashboard_id] = now  # Update timestamp to prevent checking again immediately
 
     history = commentary_history.get(dashboard_id, [])
     # Return without audio bytes

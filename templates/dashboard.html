@@ -21,12 +21,32 @@
             selectedPlayer: null,
             splitView: false,
             commentaryHistory: [],
+            currentlyPlaying: null,
+            isPlaying: false,
+            countdown: 60,
+            isFetching: false,
             playCommentary(entryId) {
                 const audioPlayer = document.getElementById('commentary-audio');
-                audioPlayer.src = `/api/commentary/{{ request.view_args.dashboard_id }}/${entryId}`;
-                audioPlayer.play().catch(e => console.log('Audio play blocked:', e));
+                if (this.currentlyPlaying === entryId && this.isPlaying) {
+                    audioPlayer.pause();
+                    this.isPlaying = false;
+                } else {
+                    audioPlayer.src = `/api/commentary/{{ request.view_args.dashboard_id }}/${entryId}`;
+                    audioPlayer.play().catch(e => console.log('Audio play blocked:', e));
+                    this.currentlyPlaying = entryId;
+                    this.isPlaying = true;
+                }
+            },
+            stopAudio() {
+                const audioPlayer = document.getElementById('commentary-audio');
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
+                this.isPlaying = false;
+                this.currentlyPlaying = null;
             },
             async fetchHistory() {
+                if (this.isFetching) return;
+                this.isFetching = true;
                 try {
                     const response = await fetch('/api/commentary-history/{{ request.view_args.dashboard_id }}');
                     if (response.ok) {
@@ -35,9 +55,25 @@
                 } catch (e) {
                     console.error('Commentary fetch failed:', e);
                 }
+                this.isFetching = false;
+                this.countdown = 60;
             }
         }"
-        x-init="fetchHistory(); setInterval(() => fetchHistory(), 60000)"
+        x-init="
+            fetchHistory();
+            setInterval(() => {
+                if (!isFetching) {
+                    countdown--;
+                    if (countdown <= 0) {
+                        fetchHistory();
+                    }
+                }
+            }, 1000);
+            document.getElementById('commentary-audio').addEventListener('ended', () => {
+                isPlaying = false;
+                currentlyPlaying = null;
+            });
+        "
     >
         <nav class="glass mb-6 rounded-2xl bg-gradient-to-r from-[#F3E8FF]/80 to-[#E0F2FE]/90 px-5 py-4">
             <div class="flex items-center justify-between gap-4">
@@ -212,7 +248,14 @@
                     </svg>
                     Commentator Timeline
                 </h2>
-                <span class="mono-data text-xs text-slate-600">Updates every 60s</span>
+                <span class="mono-data text-xs text-slate-600">
+                    <template x-if="isFetching">
+                        <span class="text-amber-600">Updating...</span>
+                    </template>
+                    <template x-if="!isFetching">
+                        <span>Next update in <span x-text="countdown"></span>s</span>
+                    </template>
+                </span>
             </div>
 
             <div class="space-y-3" x-show="commentaryHistory.length > 0">
@@ -231,15 +274,40 @@
                                 ></span>
                                 <span class="mono-data text-xs text-slate-600" x-text="new Date(entry.timestamp * 1000).toLocaleTimeString()"></span>
                             </div>
-                            <button
-                                class="rounded-lg bg-sky-500 hover:bg-sky-600 px-3 py-1 text-xs font-medium text-white transition"
-                                @click="playCommentary(entry.id)"
-                            >
-                                <svg class="inline-block h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
-                                </svg>
-                                Play
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button
+                                    class="rounded-lg px-3 py-1 text-xs font-medium text-white transition"
+                                    :class="currentlyPlaying === entry.id && isPlaying ? 'bg-amber-500 hover:bg-amber-600' : 'bg-sky-500 hover:bg-sky-600'"
+                                    @click="playCommentary(entry.id)"
+                                >
+                                    <template x-if="currentlyPlaying === entry.id && isPlaying">
+                                        <span>
+                                            <svg class="inline-block h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Pause
+                                        </span>
+                                    </template>
+                                    <template x-if="!(currentlyPlaying === entry.id && isPlaying)">
+                                        <span>
+                                            <svg class="inline-block h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/>
+                                            </svg>
+                                            Play
+                                        </span>
+                                    </template>
+                                </button>
+                                <button
+                                    x-show="currentlyPlaying === entry.id"
+                                    class="rounded-lg bg-rose-500 hover:bg-rose-600 px-3 py-1 text-xs font-medium text-white transition"
+                                    @click="stopAudio()"
+                                >
+                                    <svg class="inline-block h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Stop
+                                </button>
+                            </div>
                         </div>
                         <p class="text-sm text-slate-700 leading-relaxed" x-text="entry.script"></p>
                     </div>
