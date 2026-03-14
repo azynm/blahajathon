@@ -1,7 +1,11 @@
 import os
 import time
+import hashlib
 import requests
 from dotenv import load_dotenv
+
+CACHE_DIR = "audio_cache"
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 # Load environment variables
 load_dotenv()
@@ -59,6 +63,20 @@ def generate_audio_from_text(text: str) -> bytes:
     Takes the generated text and converts it to audio using ElevenLabs.
     Returns the audio bytes.
     """
+    # Enforce a strict character limit to protect your ElevenLabs credits
+    if len(text) > 300:
+        print(f"Warning: Script too long ({len(text)} chars). Truncating to save credits.")
+        text = text[:297] + "..."
+
+    # Check local cache before making API call
+    text_hash = hashlib.md5(text.encode()).hexdigest()
+    cache_path = os.path.join(CACHE_DIR, f"{text_hash}.mp3")
+    
+    if os.path.exists(cache_path):
+        print("Audio found in cache! Skipping ElevenLabs API call.")
+        with open(cache_path, "rb") as f:
+            return f.read()
+            
     # Adam voice ID: pNInz6obpgDQGcFmaJgB
     voice_id = "pNInz6obpgDQGcFmaJgB"
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -80,7 +98,13 @@ def generate_audio_from_text(text: str) -> bytes:
     try:
         response = requests.post(url, headers=headers, json=payload)
         response.raise_for_status()
-        return response.content
+        
+        # Save to cache
+        audio_data = response.content
+        with open(cache_path, "wb") as f:
+            f.write(audio_data)
+            
+        return audio_data
     except Exception as e:
         print(f"Error generating audio: {e}")
         return b""
