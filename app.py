@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import datetime
 from flask import Flask, render_template
 
 
@@ -6,6 +7,7 @@ import hashlib
 import hmac
 import json
 import os
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 
@@ -14,9 +16,38 @@ from github_logic import GitLeagueEngine
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
+
+def _load_players() -> list[dict]:
+	players_path = Path(__file__).resolve().parent / "players.json"
+	if not players_path.exists():
+		return []
+
+	with players_path.open("r", encoding="utf-8") as file:
+		data = json.load(file)
+
+	if not isinstance(data, list):
+		return []
+
+	return data
+
+
+def _build_current_user() -> dict[str, str]:
+	return {
+		"name": "Jordan Rivera",
+		"role": "Project Captain",
+	}
+
 @app.route("/")
 def home():
-    return render_template("index.html")
+	players = _load_players()
+	current_user = _build_current_user()
+	last_updated = datetime.now().strftime("%b %d, %Y %I:%M %p")
+	return render_template(
+		"index.html",
+		players=players,
+		current_user=current_user,
+		last_updated=last_updated,
+	)
 
 if __name__ == "__main__":
     app.run(debug=True)

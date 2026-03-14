@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "rank": 1,
+    "name": "Lacksha Jeyabraba",
+    "overall_points": 1450,
+    "stats": {
+      "commits": 142,
+      "merge_approvals": 28,
+      "positive_messages": 85,
+      "negative_messages": 2,
+      "response_time_mins": 4,
+      "spam_score": 0,
+      "branch_usage": 12
+    }
+  },
+  {
+    "id": 2,
+    "rank": 2,
+    "name": "Aadi Deepchand",
+    "overall_points": 1220,
+    "stats": {
+      "commits": 88,
+      "merge_approvals": 4,
+      "positive_messages": 12,
+      "negative_messages": 45,
+      "response_time_mins": 180,
+      "spam_score": 8,
+      "branch_usage": 1
+    }
+  },
+  {
+    "id": 3,
+    "rank": 3,
+    "name": "Sophia Advincula",
+    "overall_points": 980,
+    "stats": {
+      "commits": 45,
+      "merge_approvals": 15,
+      "positive_messages": 110,
+      "negative_messages": 0,
+      "response_time_mins": 2,
+      "spam_score": 42,
+      "branch_usage": 5
+    }
+  },
+  {
+    "id": 4,
+    "rank": 4,
+    "name": "Zayn Malik",
+    "overall_points": 870,
+    "stats": {
+      "commits": 40,
+      "merge_approvals": 9,
+      "positive_messages": 10,
+      "negative_messages": 90,
+      "response_time_mins": 200,
+      "spam_score": 100,
+      "branch_usage": 0
+    }
+  }
+]

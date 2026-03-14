@@ -1,10 +1,85 @@
-body {
-    background-color: #ff0000;
-    font-family: sans-serif;
-    text-align: center;
-    margin-top: 50px;
+:root {
+    --league-purple: #f3e8ff;
+    --league-blue: #e0f2fe;
+    --league-ink: #0f172a;
+    --league-muted: #475569;
 }
 
-h1 {
-    color: #0080ff;
+[x-cloak] {
+    display: none !important;
+}
+
+body {
+    font-family: "Space Grotesk", sans-serif;
+    color: var(--league-ink);
+    min-height: 100vh;
+}
+
+.league-bg {
+    background:
+        radial-gradient(circle at 8% 10%, rgba(224, 242, 254, 0.9), transparent 35%),
+        radial-gradient(circle at 84% 12%, rgba(243, 232, 255, 0.94), transparent 38%),
+        radial-gradient(circle at 72% 85%, rgba(224, 242, 254, 0.72), transparent 30%),
+        linear-gradient(140deg, #fbfdff 0%, #f1f8ff 42%, #f8f0ff 100%);
+}
+
+.mono-data {
+    font-family: "JetBrains Mono", monospace;
+}
+
+.glass {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.67), rgba(255, 255, 255, 0.45));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.1);
+}
+
+.fade-in {
+    animation: fade-in 500ms ease-out;
+}
+
+.stagger-item {
+    animation: rise-in 420ms ease-out;
+}
+
+.stagger-item:nth-child(2) {
+    animation-delay: 40ms;
+}
+
+.stagger-item:nth-child(3) {
+    animation-delay: 80ms;
+}
+
+.stagger-item:nth-child(4) {
+    animation-delay: 120ms;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 640px) {
+    .glass {
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
 }
