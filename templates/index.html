@@ -10,6 +10,7 @@
     <h1>Welcome to the Frontend</h1>
     <p>This page is being served by Flask!</p>
     <h3>Welcome, {{ username }}!</h3>
+    <p><a href="{{ url_for('settings') }}">Open Settings</a></p>
     <p>Manage your servers below:</p>
     <ul>
     {% for guild in guilds %}
