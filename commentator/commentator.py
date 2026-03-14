@@ -17,15 +17,55 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 # Adam (pNInz6obpgDQGcFmaJgB) gives a deep, dramatic play-by-play feel (Tyler)
 # Brian (nPczCjzI2devNBz1zQrb) is often used for dramatic, poetic storytelling (Drury)
 STYLE_MAPPING = {
-    "martin_tyler": {
-        "voice_id": "xKtsGy3Sb1IXFmCXPB77",
+    "calm": {
+        "voice_id": "15BYGLy7C839syL1CSTP",
         "description": "Martin Tyler's traditional, factual, play-by-play approach to commentary."
     },
-    "peter_drury": {
+    "poetic": {
         "voice_id": "xKtsGy3Sb1IXFmCXPB77", 
         "description": "Peter Drury's style of metaphorical, poetic, and highly dramatic storytelling."
+    },
+    "super_angry": {
+        "voice_id": "EFMtHCoh8D21fdE8gAo3", 
+        "description": "A very angry commentator who is "
     }
 }
+
+def determine_style(events: dict) -> str:
+    """
+    Determines commentary style based on event severity.
+    Some events are instant triggers for super_angry, otherwise a drama score
+    escalates through martin_tyler -> peter_drury -> super_angry.
+    """
+    # Instant red cards — always trigger super_angry
+    if events.get("discord_sentiment") in ("highly toxic",):
+        return "super_angry"
+    if any(c.get("branch", "") == "main" for c in events.get("recent_commits", [])):
+        return "super_angry"
+    if events.get("buggy_merge_approved"):
+        return "super_angry"
+
+    # Drama score for gradual escalation
+    drama = 0
+    if events.get("discord_sentiment") == "toxic":
+        drama += 3
+    if events.get("discord_sentiment") == "negative":
+        drama += 1
+    if events.get("discord_spam_count", 0) > 30:
+        drama += 2
+    if events.get("merge_conflicts", 0) > 3:
+        drama += 2
+    if any(c.get("lines_changed", 0) > 300 for c in events.get("recent_commits", [])):
+        drama += 1
+    if events.get("position_change_top3"):
+        drama += 2
+
+    if drama >= 4:
+        return "super_angry"
+    if drama >= 2:
+        return "peter_drury"
+    return "martin_tyler"
+
 
 def generate_script(events: dict, style: str = "martin_tyler") -> str:
     """
@@ -157,36 +197,88 @@ def generate_audio_from_text(text: str, style: str = "martin_tyler") -> bytes:
         print(f"Error generating audio: {e}")
         return b""
 
-def generate_commentary_audio(events: dict, style: str = "martin_tyler") -> bytes:
+def generate_commentary_audio(events: dict, style: str = None) -> bytes:
     """
     Main entry point: takes events, generates script via Gemini, and returns audio via ElevenLabs.
+    Style is auto-determined from events if not provided.
     """
+    if style is None:
+        style = determine_style(events)
     script = generate_script(events, style=style)
     print(f"Generated Script [{style}]:\n{script}\n")
     audio = generate_audio_from_text(script, style=style)
     return audio
 
 if __name__ == "__main__":
-    # Test the commentator
-    mock_events = {
-        "recent_commits": [
-            {"author": "Zayn", "message": "fixed the catastrophic memory leak in prod", "lines_changed": 420},
-            {"author": "Alex", "message": "typo in readme", "lines_changed": 2}
-        ],
-        "pull_requests_merged": 1,
-        "discord_sentiment": "highly toxic",
-        "discord_spam_count": 45
+    test_scenarios = {
+        # Calm game — should resolve to martin_tyler
+        "calm": {
+            "recent_commits": [
+                {"author": "Sophie", "message": "add unit tests for auth module", "lines_changed": 35},
+                {"author": "Dan", "message": "update README with setup instructions", "lines_changed": 12}
+            ],
+            "pull_requests_merged": 2,
+            "discord_sentiment": "positive",
+            "discord_spam_count": 3
+        },
+        # Heating up — should resolve to peter_drury (drama 3: toxic sentiment)
+        "dramatic": {
+            "recent_commits": [
+                {"author": "Liam", "message": "refactor payment service into microservice", "lines_changed": 180},
+            ],
+            "pull_requests_merged": 4,
+            "discord_sentiment": "toxic",
+            "discord_spam_count": 10,
+            "position_change_top3": False,
+            "merge_conflicts": 1
+        },
+        # Drama score blowout — should resolve to super_angry via score (drama 7: toxic + spam + merge conflicts)
+        "chaos": {
+            "recent_commits": [
+                {"author": "Raj", "message": "wip", "lines_changed": 502},
+                {"author": "Emily", "message": "idk", "lines_changed": 87}
+            ],
+            "pull_requests_merged": 0,
+            "discord_sentiment": "toxic",
+            "discord_spam_count": 55,
+            "merge_conflicts": 6,
+            "position_change_top3": False
+        },
+        # Instant red card — committed to main
+        "red_card_main": {
+            "recent_commits": [
+                {"author": "Tom", "message": "quick fix", "lines_changed": 4, "branch": "main"},
+            ],
+            "pull_requests_merged": 0,
+            "discord_sentiment": "neutral",
+            "discord_spam_count": 0
+        },
+        # Instant red card — buggy merge approved
+        "red_card_buggy": {
+            "recent_commits": [
+                {"author": "Priya", "message": "approve merge for release", "lines_changed": 20},
+            ],
+            "pull_requests_merged": 1,
+            "discord_sentiment": "negative",
+            "discord_spam_count": 5,
+            "buggy_merge_approved": True
+        },
     }
-    
-    print("Testing Commentator pipeline...")
-    audio_data = generate_commentary_audio(mock_events)
-    
-    if audio_data:
-        output_dir = "outputs"
-        os.makedirs(output_dir, exist_ok=True)
-        filepath = os.path.join(output_dir, "test_commentary.mp3")
-        with open(filepath, "wb") as f:
-            f.write(audio_data)
-        print(f"Success! Saved output to {filepath}")
-    else:
-        print("Failed to generate audio.")
+
+    output_dir = "outputs"
+    os.makedirs(output_dir, exist_ok=True)
+
+    for name, events in test_scenarios.items():
+        style = determine_style(events)
+        print(f"\n{'='*50}")
+        print(f"Scenario: {name} -> style: {style}")
+        print(f"{'='*50}")
+        audio_data = generate_commentary_audio(events)
+
+        if audio_data:
+            filepath = os.path.join(output_dir, f"test_{name}.mp3")
+            with open(filepath, "wb") as f:
+                f.write(audio_data)
+            print(f"Saved to {filepath}")
+        else:
+            print("Failed to generate audio.")
