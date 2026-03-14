@@ -40,6 +40,17 @@ body {
     animation: dashboard-card-pulse 2.4s ease-in-out infinite;
 }
 
+.menu-bar {
+    position: relative;
+    z-index: 40;
+    overflow: visible;
+}
+
+.menu-anchor {
+    position: relative;
+    z-index: 60;
+}
+
 .card-glow::before {
     content: "";
     position: absolute;
@@ -127,6 +138,213 @@ body {
 
     .card-glow {
         animation-duration: 2.8s;
+    }
+}
+
+.settings-shell {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+}
+
+.settings-card {
+    width: 100%;
+    max-width: 680px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.66);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 1.5rem;
+}
+
+.settings-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.3rem;
+}
+
+.settings-title {
+    margin: 0;
+    font-size: 1.45rem;
+    color: #0f172a;
+}
+
+.settings-sub {
+    margin: 0 0 1.2rem;
+    color: #475569;
+}
+
+.settings-menu {
+    position: relative;
+}
+
+.menu-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.5rem;
+    padding: 0 1rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 6px -1px rgba(186, 230, 253, 0.6);
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: background 160ms ease;
+}
+
+.menu-trigger:hover {
+    background: rgba(255, 255, 255, 1);
+}
+
+.menu-panel {
+    position: absolute;
+    right: 0;
+    z-index: 120;
+    width: 12rem;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    background: #ffffff;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.menu-link {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    color: #334155;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    transition: background 160ms ease;
+}
+
+.menu-link:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.field {
+    margin-bottom: 1rem;
+}
+
+.field label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #334155;
+    font-weight: 600;
+}
+
+.input {
+    width: 100%;
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.65rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+.button-row {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.btn {
+    border: 0;
+    border-radius: 10px;
+    padding: 0.6rem 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, #c4b5fd, #93c5fd);
+    color: #0f172a;
+}
+
+.btn-secondary {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.preview {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    background: rgba(243, 232, 255, 0.55);
+    border: 1px solid #dbeafe;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.preview-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    object-fit: cover;
+    background: #f8fafc;
+}
+
+.preview-avatar-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.preview-name {
+    margin: 0;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.preview-role {
+    margin: 0.2rem 0 0;
+    color: #64748b;
+}
+
+.notice {
+    margin-bottom: 1rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.92rem;
+}
+
+.notice-ok {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.notice-err {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+@media (max-width: 640px) {
+    .settings-header {
+        align-items: stretch;
     }
 }
 
