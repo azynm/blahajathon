@@ -35,7 +35,7 @@ def determine_style(events: dict) -> str:
     """
     Determines commentary style based on event severity.
     Some events are instant triggers for super_angry, otherwise a drama score
-    escalates through martin_tyler -> peter_drury -> super_angry.
+    escalates through calm -> poetic -> super_angry.
     """
     # Instant red cards — always trigger super_angry
     if events.get("discord_sentiment") in ("highly toxic",):
@@ -63,11 +63,11 @@ def determine_style(events: dict) -> str:
     if drama >= 4:
         return "super_angry"
     if drama >= 2:
-        return "peter_drury"
-    return "martin_tyler"
+        return "poetic"
+    return "calm"
 
 
-def generate_script(events: dict, style: str = "martin_tyler") -> str:
+def generate_script(events: dict, style: str = "calm") -> str:
     """
     Takes an event dictionary and generates an e-sports style commentary script using Gemini.
     """
@@ -100,7 +100,7 @@ def generate_script(events: dict, style: str = "martin_tyler") -> str:
     {events}
     
     Your job is to generate a commentary line based on the event(s) that took place matching this specific commentary style:
-    {STYLE_MAPPING.get(style, STYLE_MAPPING["martin_tyler"])["description"]}
+    {STYLE_MAPPING.get(style, STYLE_MAPPING["calm"])["description"]}
     
     Focus on the action that occurs and the impact it might have on the league table. Important things are:
 
@@ -145,7 +145,7 @@ def generate_script(events: dict, style: str = "martin_tyler") -> str:
             
     return "Oh, and we're experiencing some technical difficulties down on the pitch! The data feed is down!"
 
-def generate_audio_from_text(text: str, style: str = "martin_tyler") -> bytes:
+def generate_audio_from_text(text: str, style: str = "calm") -> bytes:
     """
     Takes the generated text and converts it to audio using ElevenLabs.
     Returns the audio bytes.
@@ -156,7 +156,7 @@ def generate_audio_from_text(text: str, style: str = "martin_tyler") -> bytes:
         text = text[:297] + "..."
 
     # Lookup the specific voice ID for the requested style
-    voice_id = STYLE_MAPPING.get(style, STYLE_MAPPING["martin_tyler"])["voice_id"]
+    voice_id = STYLE_MAPPING.get(style, STYLE_MAPPING["calm"])["voice_id"]
 
     # Check local cache before making API call
     # Include voice_id in hash so changing the ID triggers a recount
@@ -211,7 +211,7 @@ def generate_commentary_audio(events: dict, style: str = None) -> bytes:
 
 if __name__ == "__main__":
     test_scenarios = {
-        # Calm game — should resolve to martin_tyler
+        # Calm game — should resolve to calm
         "calm": {
             "recent_commits": [
                 {"author": "Sophie", "message": "add unit tests for auth module", "lines_changed": 35},
@@ -221,7 +221,7 @@ if __name__ == "__main__":
             "discord_sentiment": "positive",
             "discord_spam_count": 3
         },
-        # Heating up — should resolve to peter_drury (drama 3: toxic sentiment)
+        # Heating up — should resolve to poetic (drama 3: toxic sentiment)
         "dramatic": {
             "recent_commits": [
                 {"author": "Liam", "message": "refactor payment service into microservice", "lines_changed": 180},
