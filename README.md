@@ -1,4 +1,4 @@
-# ColLeague
+# CoLeague
 A Flask App for gamify-ing the workspace! It integrates with Discord (in place of Slack) and Github to draft a leaderboard 
 of you and your colleagues, rewarding commits, positive messages or activity, as well as punishing spam, negative messages or 
 awful branch usage. 
