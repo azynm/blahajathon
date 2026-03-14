@@ -3,6 +3,10 @@ import os
 import requests
 from discord_logic import fetch_latest_messages
 import json
+from pathlib import Path
+import uuid
+
+from werkzeug.utils import secure_filename
 
 #Setup constants
 CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
@@ -15,6 +19,24 @@ DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = "bum"
+app.config['UPLOAD_FOLDER'] = str(Path("static") / "uploads")
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def _is_allowed_image(filename: str) -> bool:
+    if not filename or "." not in filename:
+        return False
+    ext = filename.rsplit(".", 1)[1].lower()
+    return ext in ALLOWED_IMAGE_EXTENSIONS
+
+
+def _profile_context() -> dict[str, str]:
+    username = session.get('username', 'Guest User')
+    return {
+        "name": session.get('profile_name', username),
+        "role": session.get('profile_role', 'Player'),
+        "avatar": session.get('profile_picture', ''),
+    }
 
 
 
@@ -42,7 +64,14 @@ def index():
             servers.append(s)
     
     #Show the page
-    return render_template("index.html", guilds=servers, username=session['username'], client_id=CLIENT_ID, redirect_uri=REDIRECT_URI)
+    return render_template(
+        "index.html",
+        guilds=servers,
+        username=session['username'],
+        client_id=CLIENT_ID,
+        redirect_uri=REDIRECT_URI,
+        current_user=_profile_context(),
+    )
 
 
 
@@ -85,7 +114,48 @@ def dashboard(dashboard_id):
     with open('players.json', 'r') as file:
         data = json.load(file)
 
-    return render_template("dashboard.html", players=data)
+    return render_template("dashboard.html", players=data, current_user=_profile_context())
+
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if 'access_token' not in session:
+        return redirect(url_for('index'))
+
+    error_message = ""
+
+    if request.method == 'POST':
+        display_name = request.form.get('display_name', '').strip()
+        picture_file = request.files.get('picture_file')
+
+        if display_name:
+            session['profile_name'] = display_name
+
+        if picture_file and picture_file.filename:
+            if _is_allowed_image(picture_file.filename):
+                upload_dir = Path(app.config['UPLOAD_FOLDER'])
+                upload_dir.mkdir(parents=True, exist_ok=True)
+
+                original_name = secure_filename(picture_file.filename)
+                extension = original_name.rsplit('.', 1)[1].lower()
+                file_name = f"{uuid.uuid4().hex}.{extension}"
+                save_path = upload_dir / file_name
+                picture_file.save(save_path)
+
+                session['profile_picture'] = url_for('static', filename=f'uploads/{file_name}')
+            else:
+                error_message = "Unsupported image format. Use png, jpg, jpeg, gif, or webp."
+
+        if not error_message:
+            return redirect(url_for('settings', saved='1'))
+
+    saved = request.args.get('saved') == '1'
+    return render_template(
+        'settings.html',
+        current_user=_profile_context(),
+        saved=saved,
+        error_message=error_message,
+    )
 
 
 #Actually starts web server

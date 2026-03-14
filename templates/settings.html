@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoLeague Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .settings-shell {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .settings-card {
+            width: 100%;
+            max-width: 680px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.66);
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            box-shadow: 0 16px 38px rgba(15, 23, 42, 0.12);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 1.5rem;
+        }
+
+        .settings-title {
+            margin: 0 0 0.3rem;
+            font-size: 1.45rem;
+            color: #0f172a;
+        }
+
+        .settings-sub {
+            margin: 0 0 1.2rem;
+            color: #475569;
+        }
+
+        .field {
+            margin-bottom: 1rem;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 0.4rem;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .input {
+            width: 100%;
+            border: 1px solid #dbeafe;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 0.65rem 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 0.6rem 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #c4b5fd, #93c5fd);
+            color: #0f172a;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+
+        .preview {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(243, 232, 255, 0.55);
+            border: 1px solid #dbeafe;
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+
+        .preview-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 999px;
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            object-fit: cover;
+            background: #f8fafc;
+        }
+
+        .notice {
+            margin-bottom: 1rem;
+            padding: 0.7rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.92rem;
+        }
+
+        .notice-ok {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .notice-err {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+    </style>
+</head>
+<body class="league-bg">
+    <main class="settings-shell">
+        <section class="settings-card">
+            <h1 class="settings-title">Profile Settings</h1>
+            <p class="settings-sub">Upload a profile picture or replace your current one.</p>
+
+            {% if saved %}
+            <div class="notice notice-ok">Profile updated successfully.</div>
+            {% endif %}
+
+            {% if error_message %}
+            <div class="notice notice-err">{{ error_message }}</div>
+            {% endif %}
+
+            <div class="preview">
+                {% if current_user.avatar %}
+                <img src="{{ current_user.avatar }}" alt="Current profile picture" class="preview-avatar">
+                {% else %}
+                <div class="preview-avatar" style="display:flex;align-items:center;justify-content:center;color:#64748b;font-weight:700;">No Pic</div>
+                {% endif %}
+                <div>
+                    <p style="margin:0;color:#0f172a;font-weight:700;">{{ current_user.name }}</p>
+                    <p style="margin:0.2rem 0 0;color:#64748b;">{{ current_user.role }}</p>
+                </div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                <div class="field">
+                    <label for="display_name">Display Name</label>
+                    <input class="input" id="display_name" name="display_name" type="text" placeholder="Your display name" value="{{ current_user.name }}">
+                </div>
+
+                <div class="field">
+                    <label for="picture_file">Profile Picture</label>
+                    <input class="input" id="picture_file" name="picture_file" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,image/*">
+                </div>
+
+                <div class="button-row">
+                    <button class="btn btn-primary" type="submit">Save Profile</button>
+                    <a class="btn btn-secondary" href="{{ url_for('index') }}">Back to Servers</a>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+</html>

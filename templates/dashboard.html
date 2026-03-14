@@ -46,8 +46,8 @@
                             <p class="font-semibold">{{ dashboard_user.name }}</p>
                             <p class="text-xs text-slate-500">{{ dashboard_user.role }}</p>
                         </div>
-                        <button class="mt-1 w-full rounded-lg px-3 py-2 text-left hover:bg-white/50">Edit Profile</button>
-                        <button class="w-full rounded-lg px-3 py-2 text-left hover:bg-white/50">Voice Settings</button>
+                        <a href="{{ url_for('settings') }}" class="mt-1 block w-full rounded-lg px-3 py-2 text-left hover:bg-white/50">Edit Profile</a>
+                        <a href="{{ url_for('settings') }}" class="block w-full rounded-lg px-3 py-2 text-left hover:bg-white/50">Voice Settings</a>
                     </div>
                 </div>
             </div>
