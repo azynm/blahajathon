@@ -25,8 +25,19 @@
                 const audioPlayer = document.getElementById('commentary-audio');
                 audioPlayer.src = `/api/commentary/{{ request.view_args.dashboard_id }}/${entryId}`;
                 audioPlayer.play().catch(e => console.log('Audio play blocked:', e));
+            },
+            async fetchHistory() {
+                try {
+                    const response = await fetch('/api/commentary-history/{{ request.view_args.dashboard_id }}');
+                    if (response.ok) {
+                        this.commentaryHistory = await response.json();
+                    }
+                } catch (e) {
+                    console.error('Commentary fetch failed:', e);
+                }
             }
         }"
+        x-init="fetchHistory(); setInterval(() => fetchHistory(), 60000)"
     >
         <nav class="glass mb-6 rounded-2xl bg-gradient-to-r from-[#F3E8FF]/80 to-[#E0F2FE]/90 px-5 py-4">
             <div class="flex items-center justify-between gap-4">
@@ -245,30 +256,7 @@
     <audio id="commentary-audio" style="display: none;"></audio>
 
     <script>
-        // Poll for commentary history every 60 seconds
-        const dashboardId = '{{ request.view_args.dashboard_id }}';
-
-        async function fetchCommentaryHistory() {
-            try {
-                const response = await fetch(`/api/commentary-history/${dashboardId}`);
-                if (response.ok) {
-                    const history = await response.json();
-                    // Update Alpine data
-                    const rootEl = document.querySelector('[x-data]');
-                    if (rootEl && rootEl._x_dataStack) {
-                        rootEl._x_dataStack[0].commentaryHistory = history;
-                    }
-                }
-            } catch (error) {
-                console.error('Commentary history fetch failed:', error);
-            }
-        }
-
-        // Poll every 60 seconds
-        setInterval(fetchCommentaryHistory, 60000);
-
-        // Also check immediately on page load (after a short delay)
-        setTimeout(fetchCommentaryHistory, 2000);
+        // No external polling needed — handled by Alpine x-init above
     </script>
 </body>
 </html>
