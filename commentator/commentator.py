@@ -18,11 +18,11 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 # Brian (nPczCjzI2devNBz1zQrb) is often used for dramatic, poetic storytelling (Drury)
 STYLE_MAPPING = {
     "martin_tyler": {
-        "voice_id": "pNInz6obpgDQGcFmaJgB",
+        "voice_id": "xKtsGy3Sb1IXFmCXPB77",
         "description": "Martin Tyler's traditional, factual, play-by-play approach to commentary."
     },
     "peter_drury": {
-        "voice_id": "nPczCjzI2devNBz1zQrb", 
+        "voice_id": "xKtsGy3Sb1IXFmCXPB77", 
         "description": "Peter Drury's style of metaphorical, poetic, and highly dramatic storytelling."
     }
 }
@@ -115,17 +115,18 @@ def generate_audio_from_text(text: str, style: str = "martin_tyler") -> bytes:
         print(f"Warning: Script too long ({len(text)} chars). Truncating to save credits.")
         text = text[:297] + "..."
 
+    # Lookup the specific voice ID for the requested style
+    voice_id = STYLE_MAPPING.get(style, STYLE_MAPPING["martin_tyler"])["voice_id"]
+
     # Check local cache before making API call
-    text_hash = hashlib.md5(f"{style}_{text}".encode()).hexdigest()
+    # Include voice_id in hash so changing the ID triggers a recount
+    text_hash = hashlib.md5(f"{voice_id}_{text}".encode()).hexdigest()
     cache_path = os.path.join(CACHE_DIR, f"{text_hash}.mp3")
     
     if os.path.exists(cache_path):
         print("Audio found in cache! Skipping ElevenLabs API call.")
         with open(cache_path, "rb") as f:
             return f.read()
-            
-    # Lookup the specific voice ID for the requested style
-    voice_id = STYLE_MAPPING.get(style, STYLE_MAPPING["martin_tyler"])["voice_id"]
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     
     headers = {
