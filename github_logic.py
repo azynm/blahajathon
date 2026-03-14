@@ -1,37 +1,64 @@
 import requests
+from datetime import datetime
 
-def get_github_data(repo, headers):
-    endpoints = ["/commits", "/branches", "/issues?state=all"]
-    
-	#Loops through all endpoints to collect the data
+def get_detailed_github_data(repo, headers, since_date):
+    base_url = f"https://api.github.com/repos/{repo}"
+    since_date = since_date.strftime('%Y-%m-%dT%H:%M:%SZ')
     out = []
-	for e in endpoints:
-        r = requests.get(f"https://api.github.com/repos/{repo}{e}", headers=headers)
-        if r.status_code == 200:
-        	data = r.json()
-            for item in data:
-				if e == "/commits":
-                    if "Merge" in item["commit"]["message"]:
-						out.append({"type":"merge", })
-					else:
-						out.append({"type":"commit", })
-				elif e == "/branches":
-					out.append({"type":"branch", })
-				elif e == "/issues?state=all":
-					out.append({"type":"issues", })
 
-    # Normalize different API responses into one format for the template
-    for item in raw_data[:10]: # Limit to last 10
-        if view == "branches":
-            formatted.append({"title": f"Branch: {item['name']}", "user": "System", "date": "N/A"})
-        elif view == "issues":
-            formatted.append({"title": f"#{item['number']} {item['title']}", "user": item['user']['login'], "date": item['created_at']})
-        else: # Commits / Merges
-            msg = item['commit']['message']
-            is_merge = "Merge" in msg
-            formatted.append({
-                "title": f"{'[MERGE] ' if is_merge else ''}{msg.splitlines()[0]}",
-                "user": item['commit']['author']['name'],
-                "date": item['commit']['author']['date']
-            })
-    return formatted
+    #Get commits since a certain time
+    commit_params = {"since": since_date}
+    commits_res = requests.get(f"{base_url}/commits", headers=headers, params=commit_params)
+    
+    if commits_res.status_code == 200:
+        for c in commits_res.json():
+            if "merge" in (c['commit']['message']).lower():
+                out.append({
+                    "type": "merge",
+                    "author": c['commit']['author']['name'],
+                    "date": c['commit']['author']['date'],
+                    "message": c['commit']['message']#,
+                    #"sha": c['sha']
+                })
+            else:
+                out.append({
+                    "type": "commit",
+                    "author": c['commit']['author']['name'],
+                    "date": c['commit']['author']['date'],
+                    "message": c['commit']['message']#,
+                    #"sha": c['sha']
+                })
+
+    #Get pull requests
+    prs_res = requests.get(f"{base_url}/pulls?state=closed&sort=updated&direction=desc", headers=headers)
+    
+    if prs_res.status_code == 200:
+        for pr in prs_res.json():
+            merged_at = pr.get('merged_at')
+            
+            # Only proceed if it was merged and merged AFTER our 'since_date'
+            if merged_at and merged_at >= since_date:
+                
+                # Fetch Approvers
+                reviews_res = requests.get(f"{base_url}/pulls/{pr['number']}/reviews", headers=headers)
+                approvers = []
+                if reviews_res.status_code == 200:
+                    approvers = [r['user']['login'] for r in reviews_res.json() if r['state'] == 'APPROVED']
+                
+                out.append({
+                    "type": "merge_request",
+                    "id": pr['number'],
+                    "title": pr['title'],
+                    "author": pr['user']['login'],
+                    "merged_at": merged_at,
+                    "source_branch": pr['head']['ref'],
+                    "target_branch": pr['base']['ref'],
+                    "approvers": list(set(approvers)) # list(set()) removes duplicate approvals
+                })
+            
+            # Optimization: If the PR was updated before our 'since_date', 
+            # we can stop looping (since we sorted by 'updated' desc).
+            elif pr.get('updated_at') < since_date:
+                break
+
+    return out

@@ -1,6 +1,21 @@
 import requests
 from datetime import datetime, timedelta
 
+def fetch_all_messages(dashboard_id, headers, last_time):
+    #Fetch a list of all channels in the server
+    r = requests.get(f"https://discord.com/api/v10/guilds/{dashboard_id}/channels", headers=headers)
+    if r.status_code != 200:
+        return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
+
+    #Filter for text channels and scrape messages
+    channels = r.json()
+    text_channels = [c for c in channels if c['type'] == 0]
+    out = []
+    for c in text_channels:
+        out.extend(fetch_latest_messages(c['id'], headers, last_time))
+        
+    return out
+
 def fetch_latest_messages(channel_id, headers, since_datetime):
     #Get snowflake for most recent time
     after_id = datetime_to_snowflake(since_datetime)    
