@@ -7,5 +7,23 @@
 <body>
     <h1>Welcome to the Frontend</h1>
     <p>This page is being served by Flask!</p>
+    <h3>Welcome, {{ username }}!</h3>
+    <p>Manage your servers below:</p>
+    <ul>
+    {% for guild in guilds %}
+        <li>
+            <b>{{ guild.name }}</b> 
+            {% if guild.bot_exists %}
+                ✅ <a href="/select_guild/{{ guild.id }}">Select Server</a>
+            {% else %}
+                ❌ <a href="https://discord.com/api/oauth2/authorize?client_id={{ client_id }}&scope=bot&permissions=65536&guild_id={{ guild.id }}&disable_guild_select=true&redirect_uri={{ redirect_uri }}&response_type=code">
+                    <button>Add Bot to this Server</button>
+                </a>
+            {% endif %}
+        </li>
+    {% endfor %}
+    </ul>
+    <hr>
+    <a href="/">Reset Session</a>
 </body>
 </html>
