@@ -14,7 +14,7 @@ DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={CLIENT_
 #Start Flask app
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.secret_key = "bum"
+app.secret_key = "slay"
 
 
 
