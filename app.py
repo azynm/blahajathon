@@ -5,7 +5,7 @@ load_dotenv(override=True)
 
 import hashlib
 import requests
-from discord_logic import fetch_all_messages
+from discord_logic import fetch_all_messages, create_storage_channel, get_repo_name
 from commentator_logic import collect_events
 from settings_logic import _is_allowed_image, _profile_context
 from github_logic import get_detailed_github_data
@@ -25,13 +25,13 @@ GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 REDIRECT_URI = "http://127.0.0.1:5000/discord_callback"
-DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=65536&prompt=consent"
+DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=268437520&prompt=consent"
 GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=repo" 
 
 #Start Flask app
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.secret_key = "bum2"
+app.secret_key = "bum4"
 app.config['UPLOAD_FOLDER'] = str(Path("static") / "uploads")
 
 # Global state for commentary caching
@@ -54,7 +54,11 @@ def index():
     if not isinstance(bot_servers, list):
         # Bot token error - clear session and re-login
         return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
-    bot_server_ids = set([g["id"] for g in bot_servers])
+    bot_server_ids = []
+    for g in bot_servers:
+        name = get_repo_name(g["id"], {"Authorization": f"Bot {BOT_TOKEN}"})
+        if name is not None:
+            bot_server_ids.append(g["id"])
 
     #Get all the servers the user is in
     user_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bearer {session['discord_access_token']}"}).json()
@@ -78,6 +82,22 @@ def index():
 #Discord callback page
 @app.route('/discord_callback')
 def discord_callback(): 
+    state_str = request.args.get('state')
+    
+    if state_str:
+        state_data = json.loads(state_str)
+        guild_id = state_data.get('guild_id')
+        repo = state_data.get('repo')
+        discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+        
+        name = create_storage_channel(guild_id, repo, discord_headers)
+        if name is not None:
+            print(f"Bot added to Guild: {guild_id} for Repo: {repo}")
+        else:
+            print("error")
+            
+        return redirect(url_for('index'))
+
     #Get code from Discord callback for handshake
     code = request.args.get('code')
     
@@ -93,6 +113,7 @@ def discord_callback():
     session['username'] = user_data.get('username')
     
     return redirect(url_for('index'))
+          
 
 #Github callback page
 @app.route('/github_callback')

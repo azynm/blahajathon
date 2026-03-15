@@ -8,18 +8,15 @@ import requests
 from datetime import datetime, timedelta
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-channels = 0
 
 def fetch_all_messages(dashboard_id, headers, last_time):
-    global channels
     #Fetch a list of all channels in the server
-    if channels == 0:
-        r = requests.get(f"https://discord.com/api/v10/guilds/{dashboard_id}/channels", headers=headers)
-        if r.status_code != 200:
-            return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
+    r = requests.get(f"https://discord.com/api/v10/guilds/{dashboard_id}/channels", headers=headers)
+    if r.status_code != 200:
+        return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
 
-        #Filter for text channels and scrape messages
-        channels = r.json()
+    #Filter for text channels and scrape messages
+    channels = r.json()
     
     text_channels = [c for c in channels if c['type'] == 0 and c.get('name', '').lower() != 'keys']
     out = []
@@ -140,19 +137,16 @@ If nothing notable happened, use an empty list for highlights."""
     return {"overall": "neutral", "highlights": []}
 
 def get_repo_name(guild_id, discord_headers):
-    global channels
-    if channels == 0:
-        r = requests.get(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=discord_headers)
-        if r.status_code == 429:
+    r = requests.get(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=discord_headers)
+    if r.status_code == 429:
             time.sleep(r.json().get('retry_after', 1))
             return get_repo_name(guild_id, discord_headers)
-        if r.status_code != 200:
-            return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
+    if r.status_code != 200:
+        return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
 
-        #Filter for text channels and scrape messages
-        channels = r.json()
-
-
+    #Filter for text channels and scrape messages
+    channels = r.json()
+    
     config_channel = next((c for c in channels if c['name'] == 'bot-internal-config'), None)
 
     if config_channel:
@@ -173,17 +167,62 @@ def create_storage_channel(guild_id, repo_name, discord_headers):
             "name": "bot-internal-config",
             "type": 0,
             "permission_overwrites": [
-                {"id": guild_id, "type": 0, "deny": "1024"} # Deny View Channel for @everyone (1024 is VIEW_CHANNEL)
+                {"id": guild_id, "type": 0} # Deny View Channel for @everyone (1024 is VIEW_CHANNEL)
             ]
         }
     new_chan = requests.post(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=discord_headers, json=create_payload).json()
     
+    time.sleep(0.5)
+
     if 'id' in new_chan:
+        data = {"repo": repo_name}
         # Success! Save the data.
         requests.post(f"https://discord.com/api/v10/channels/{new_chan['id']}/messages", 
-                        headers=discord_headers, json={"content": repo_name})
+                        headers=discord_headers, json={"content": json.dumps(data)})
         return repo_name
     else:
         # Failure! Log the error so you can see it in your terminal
         print(f"Failed to create channel in {guild_id}. Response: {new_chan}")
         return None
+
+def read_storage(guild_id, discord_headers):
+    r = requests.get(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=discord_headers)
+    if r.status_code != 200:
+        return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
+
+    #Filter for text channels and scrape messages
+    channels = r.json()    
+    config_channel = next((c for c in channels if c['name'] == 'bot-internal-config'), None)
+    
+    if config_channel:
+        # Fetch the first message in that channel
+        msg_resp = requests.get(f"https://discord.com/api/v10/channels/{config_channel['id']}/messages?limit=1", headers=discord_headers)
+        messages = msg_resp.json()
+        if messages:
+            return json.loads(messages[0]['content'])
+    return None
+
+def update_storage(guild_id, discord_headers, data):
+    r = requests.get(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=discord_headers)
+    if r.status_code != 200:
+        return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
+
+    #Filter for text channels and scrape messages
+    channels = r.json()    
+    config_channel = next((c for c in channels if c['name'] == 'bot-internal-config'), None)
+
+    if config_channel:
+        # 2. Get the existing message ID
+        msg_resp = requests.get(f"https://discord.com/api/v10/channels/{config_channel['id']}/messages?limit=1", headers=discord_headers)
+        messages = msg_resp.json()
+
+        if messages:
+            msg_id = messages[0]['id']
+            # 3. Use PATCH to update the content
+            patch_url = f"https://discord.com/api/v10/channels/{config_channel['id']}/messages/{msg_id}"
+            update_payload = {"content": json.dumps(data)}
+            
+            res = requests.patch(patch_url, headers=discord_headers, json=update_payload)
+            return True
+            
+    return "Error: Storage channel or message not found."
