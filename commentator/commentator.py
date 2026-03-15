@@ -71,11 +71,21 @@ def generate_script(events: dict, style: str = "calm") -> str:
     """
     Takes an event dictionary and generates an e-sports style commentary script using Gemini.
     """
-    # Build highlights section if available
+    # Build highlights section if available, sanitizing offensive content
     highlights = events.get("discord_highlights", [])
     highlights_text = ""
     if highlights:
-        highlights_text = "\n\nNOTABLE MOMENTS TO COMMENTATE ON:\n" + "\n".join(f"- {h}" for h in highlights)
+        # Sanitize highlights - remove actual slurs/threats, keep the structure
+        sanitized = []
+        for h in highlights:
+            cleaned = h.replace("KILL YOURSELF", "[sent threats to]")
+            cleaned = cleaned.replace("kill yourself", "[sent threats to]")
+            cleaned = cleaned.replace("GO KILL URSELF", "[sent threats to]")
+            cleaned = cleaned.replace("kill myself", "[made concerning statements]")
+            cleaned = cleaned.replace("PAKI", "[used slurs against]")
+            cleaned = cleaned.replace("death threats", "serious insults")
+            sanitized.append(cleaned)
+        highlights_text = "\n\nNOTABLE MOMENTS (describe dramatically but keep it broadcast-safe):\n" + "\n".join(f"- {h}" for h in sanitized)
 
     prompt = f"""You are an energetic, dramatic football commentator for a software development team's league table.
 
@@ -87,19 +97,19 @@ CURRENT SITUATION:
 COMMENTARY STYLE: {STYLE_MAPPING.get(style, STYLE_MAPPING["calm"])["description"]}
 
 CRITICAL RULES:
-1. If notable moments are listed above, YOU MUST mention the specific people BY NAME and what they did
-2. Be specific - don't say "toxic behavior", say "Dave just called Mike's code garbage!"
-3. Use football terms: howler, screamer, red card, yellow card, own goal, hat trick, VAR check
-4. Match the energy to the style - calm is measured, poetic is flowery, super_angry is EXPLOSIVE
+1. Mention people BY NAME and describe the drama in broadcast-safe football terms
+2. Use football terms: howler, screamer, red card, yellow card, own goal, sending off, VAR check, ugly scenes
+3. Match the energy to the style - calm is measured, poetic is flowery, super_angry is EXPLOSIVE
+4. For toxic content, use phrases like "ugly scenes", "lost their head", "seeing red", "straight red card offense"
 
 Output: 1-2 sentences, max 40 words. No asterisks or markdown."""
-    
+
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
-    
+
     max_retries = 3
     for attempt in range(max_retries):
         try:
@@ -113,13 +123,21 @@ Output: 1-2 sentences, max 40 words. No asterisks or markdown."""
                 wait_time = 5 * (2 ** attempt)  # 5s, 10s, 20s
                 print(f"Rate limited (429). Retrying in {wait_time} seconds (Attempt {attempt+1}/{max_retries})...")
                 time.sleep(wait_time)
+            elif response.status_code == 400:
+                # Content blocked by safety filters - return dramatic fallback
+                print(f"Content blocked by safety filters, using fallback")
+                sentiment = events.get('discord_sentiment', 'neutral')
+                if sentiment in ('toxic', 'highly toxic'):
+                    return "ABSOLUTE CHAOS! Ugly scenes in the Discord channel - multiple red cards being shown! The referee has completely lost control of this match!"
+                else:
+                    return "Some heated exchanges in the team chat today. The manager will want to have words about that."
             else:
                 print(f"Error generating script: {e}")
                 break
         except Exception as e:
             print(f"Error generating script: {e}")
             break
-            
+
     return "Oh, and we're experiencing some technical difficulties down on the pitch! The data feed is down!"
 
 def generate_audio_from_text(text: str, style: str = "calm") -> bytes:
