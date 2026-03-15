@@ -210,11 +210,24 @@ def dashboard(dashboard_id):
     discord_data = fetch_all_messages(dashboard_id, discord_headers, last_time)
     
     print(github_data, discord_data) 
+
+    project_name = dashboard_id
+    try:
+        guild_resp = requests.get(
+            f"https://discord.com/api/guilds/{dashboard_id}",
+            headers=discord_headers,
+            timeout=10,
+        )
+        if guild_resp.ok:
+            guild_data = guild_resp.json()
+            project_name = guild_data.get("name", dashboard_id)
+    except requests.RequestException:
+        project_name = dashboard_id
     
     with open('players.json', 'r') as file:
         data = json.load(file)
 
-    return render_template("dashboard.html", players=data)
+    return render_template("dashboard.html", players=data, project_name=project_name)
 
 
 

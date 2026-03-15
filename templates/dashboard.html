@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoLeague</title>
+    <title>CoLeague - {{ project_name if project_name is defined else 'Project' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,7 +78,7 @@
         <nav class="glass card-glow menu-bar mb-6 rounded-2xl bg-gradient-to-r from-[#F3E8FF]/80 to-[#E0F2FE]/90 px-5 py-4">
             <div class="flex items-center justify-between gap-4">
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900">CoLeague</h1>
+                    <h1 class="text-2xl font-bold tracking-tight text-slate-900">CoLeague - {{ project_name if project_name is defined else 'Project' }}</h1>
                     <p class="mt-1 text-sm text-slate-600" style="font-family: 'JetBrains Mono', monospace;">// last updated: <span style="font-weight: 600;">{{ dashboard_last_updated }}</span></p>
                 </div>
 
@@ -109,26 +109,33 @@
         <div class="flex flex-col gap-6 lg:flex-row lg:items-start">
             <section
                 class="glass overflow-hidden rounded-2xl transition-all duration-500"
-                :class="splitView ? 'lg:w-1/2' : 'w-full'"
+                :class="splitView ? 'lg:w-3/5' : 'w-full'"
             >
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-left">
                         <thead class="bg-gradient-to-r from-[#F3E8FF]/80 to-[#E0F2FE]/90 text-sm uppercase tracking-wider text-slate-600">
                             <tr>
                                 <th class="px-4 py-3">Rank</th>
-                                <th class="px-4 py-3">Team &amp; Manager</th>
-                                <th class="px-4 py-3">GW Points</th>
-                                <th class="px-4 py-3">Total Points</th>
+                                <th class="px-4 py-3">Name</th>
+                                <th class="px-4 py-3">Overall Points</th>
+                                <th class="px-4 py-3">GP</th>
+                                <th class="px-4 py-3">DP</th>
+                                <th class="px-4 py-3">Results</th>
                             </tr>
                         </thead>
                         <tbody class="text-sm">
                             {% for player in dashboard_players %}
+                            {% set mention_total = player.stats.positive_messages + player.stats.negative_messages %}
+                            {% set result_positive = (player.stats.positive_messages * 5) // (mention_total if mention_total > 0 else 1) %}
+                            {% set result_negative = (player.stats.negative_messages * 5) // (mention_total if mention_total > 0 else 1) %}
+                            {% set result_neutral = 5 - result_positive - result_negative %}
                             <tr
                                 class="stagger-item cursor-pointer border-b border-white/50 transition hover:bg-white/60 {% if loop.index0 % 2 == 0 %}bg-[#F3E8FF]/45{% else %}bg-[#E0F2FE]/45{% endif %}"
                                 @click='selectedPlayer = {{ player|tojson }}; splitView = true'
                             >
                                 <td class="px-4 py-4 align-middle">
                                     <div class="flex items-center gap-2">
+                                        <span class="inline-flex h-6 w-6 items-center justify-center">
                                         {% if player.rank == 1 %}
                                         <svg class="h-6 w-6 text-amber-400 drop-shadow-sm" viewBox="0 0 24 24" fill="currentColor" aria-label="Gold medal" role="img">
                                             <path d="M7 2h4l1 6H8L7 2Z" />
@@ -154,8 +161,9 @@
                                             <path d="M12 12.7l.9 1.8 2 .3-1.45 1.4.34 2-1.79-.94-1.79.94.34-2-1.45-1.4 2-.3.9-1.8Z" fill="white" />
                                         </svg>
                                         {% else %}
-                                        <span class="mono-data text-base font-bold text-slate-900">{{ player.rank }}</span>
+                                        <span class="mono-data inline-flex h-6 w-6 items-center justify-center text-base font-bold text-slate-900">{{ player.rank }}</span>
                                         {% endif %}
+                                        </span>
                                         {% if player.stats.positive_messages > player.stats.negative_messages %}
                                         <svg class="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                             <path fill-rule="evenodd" d="M10 3a1 1 0 0 1 .707.293l5 5a1 1 0 1 1-1.414 1.414L11 6.414V16a1 1 0 1 1-2 0V6.414L5.707 9.707A1 1 0 0 1 4.293 8.293l5-5A1 1 0 0 1 10 3Z" clip-rule="evenodd" />
@@ -175,13 +183,48 @@
                                         <p class="font-medium text-slate-900">{{ player.name }}</p>
                                     </div>
                                 </td>
-                                <td class="mono-data px-4 py-4 font-semibold text-slate-800">{{ player.stats.commits }}</td>
                                 <td class="mono-data px-4 py-4 text-lg font-bold text-sky-700">{{ player.overall_points }}</td>
+                                <td class="mono-data px-4 py-4 font-semibold text-slate-800">{{ player.stats.commits }}</td>
+                                <td class="mono-data px-4 py-4 font-semibold text-slate-800">{{ player.stats.positive_messages - player.stats.negative_messages }}</td>
+                                <td class="px-4 py-4">
+                                    <div class="flex items-center gap-1.5">
+                                        {% for i in range(5) %}
+                                            {% if i < result_positive %}
+                                            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-600" title="Positive mention">
+                                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.8" />
+                                                    <circle cx="7.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <circle cx="12.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <path d="M6.8 11.2c.85 1.15 1.94 1.72 3.2 1.72 1.26 0 2.35-.57 3.2-1.72" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                                </svg>
+                                            </span>
+                                            {% elif i < result_positive + result_negative %}
+                                            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 text-rose-600" title="Negative mention">
+                                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.8" />
+                                                    <circle cx="7.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <circle cx="12.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <path d="M6.8 13.2c.85-1.15 1.94-1.72 3.2-1.72 1.26 0 2.35.57 3.2 1.72" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                                </svg>
+                                            </span>
+                                            {% else %}
+                                            <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-slate-500" title="Neutral mention">
+                                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.8" />
+                                                    <circle cx="7.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <circle cx="12.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <path d="M7 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                                </svg>
+                                            </span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                             {% if dashboard_players|length == 0 %}
                             <tr class="bg-white/50">
-                                <td class="px-4 py-8 text-center text-sm text-slate-500" colspan="4">No leaderboard data available yet.</td>
+                                <td class="px-4 py-8 text-center text-sm text-slate-500" colspan="6">No leaderboard data available yet.</td>
                             </tr>
                             {% endif %}
                         </tbody>
@@ -198,7 +241,7 @@
                 x-transition:leave="transition ease-in duration-300"
                 x-transition:leave-start="opacity-100 translate-x-0"
                 x-transition:leave-end="opacity-0 translate-x-8"
-                class="glass w-full rounded-2xl p-5 lg:w-1/2"
+                class="glass w-full rounded-2xl p-5 lg:w-2/5"
             >
                 <div class="mb-4 flex items-center justify-between">
                     <h2 class="text-xl font-bold text-slate-900">Player Detail Card</h2>
@@ -229,8 +272,8 @@
                                 <p class="mono-data text-lg font-bold" x-text="selectedPlayer.stats.merge_approvals"></p>
                             </div>
                             <div class="rounded-xl bg-white/60 p-3">
-                                <p class="text-slate-500">Sentiment Score</p>
-                                <p class="mono-data text-lg font-bold" x-text="selectedPlayer.stats.positive_messages - selectedPlayer.stats.negative_messages"></p>
+                                <p class="text-slate-500">Coding Points</p>
+                                <p class="mono-data text-lg font-bold" x-text="selectedPlayer.stats.commits"></p>
                             </div>
                             <div class="rounded-xl bg-white/60 p-3">
                                 <p class="text-slate-500">Response Time (mins)</p>
