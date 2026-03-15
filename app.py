@@ -6,6 +6,7 @@ load_dotenv(override=True)
 
 import hashlib
 import requests
+from urllib.parse import quote
 from discord_logic import fetch_all_messages, create_storage_channel, get_repo_name
 from commentator_logic import collect_events
 from settings_logic import _is_allowed_image, _profile_context
@@ -18,7 +19,7 @@ from commentator_logic import determine_style, generate_script, generate_audio_f
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import time
-import gunicorn
+
 import elevenlabs
 
 #Setup constants
@@ -27,9 +28,11 @@ DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-REDIRECT_URI = "http://127.0.0.1:5000/discord_callback"
-DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=268437520&prompt=consent"
-GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=repo" 
+APP_URL = os.getenv("APP_URL", "http://127.0.0.1:5000").rstrip("/")
+REDIRECT_URI = f"{APP_URL}/discord_callback"
+GITHUB_REDIRECT_URI = f"{APP_URL}/github_callback"
+DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={quote(REDIRECT_URI, safe='')}&response_type=code&scope=identify+guilds+bot&permissions=268437520&prompt=consent"
+GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=repo&redirect_uri={quote(GITHUB_REDIRECT_URI, safe='')}" 
 
 #Start Flask app
 app = Flask(__name__)
