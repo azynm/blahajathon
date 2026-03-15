@@ -51,11 +51,18 @@ def index():
 
     #Get all the servers the bot is in
     bot_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"}).json()
+    if not isinstance(bot_servers, list):
+        # Bot token error - clear session and re-login
+        return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
     bot_server_ids = set([g["id"] for g in bot_servers])
 
     #Get all the servers the user is in
     user_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bearer {session['discord_access_token']}"}).json()
-    
+    if not isinstance(user_servers, list):
+        # Token expired or invalid - clear session and re-login
+        session.clear()
+        return redirect(url_for('index'))
+
     #Make a list of all servers we can participate in
     servers = []
     for s in user_servers:

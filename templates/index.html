@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoLeague</title>
+    <title>CoLeague - League Select</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,14 +51,20 @@
         window.location.href = url.toString();
     }
 }">
-    <div class="mx-auto max-w-5xl px-4 pb-8 pt-5 sm:px-6 lg:px-8 fade-in">
+    <!-- Commit Tile Mosaic Background -->
+    <div class="mosaic-container" id="mosaic"></div>
+
+    <div class="mx-auto max-w-7xl px-4 pb-8 pt-5 sm:px-6 lg:px-8 fade-in">
 
         <!-- Top Nav Bar -->
         <nav class="glass card-glow menu-bar mb-6 rounded-2xl bg-gradient-to-r from-[#F3E8FF]/80 to-[#E0F2FE]/90 px-5 py-4">
             <div class="flex items-center justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900">Welcome, {{ username }}!</h1>
-                    <p class="mt-1 text-sm text-slate-600">Select a server to view your league</p>
+                <div class="flex items-center gap-3">
+                    <img src="{{ url_for('static', filename='CLeagueLogo.svg') }}" alt="CoLeague Logo" class="h-20 w-20">
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Welcome, {{ username }}!</h1>
+                        <p class="mt-1 text-sm text-slate-600">Select a server to view your league</p>
+                    </div>
                 </div>
 
                 <div class="menu-anchor" x-data="{ open: false }">
@@ -358,5 +364,84 @@
             </button>
         </div>
     </div>
+
+    <!-- Mosaic Animation Script -->
+    <script>
+    (function() {
+        const mosaic = document.getElementById('mosaic');
+        if (!mosaic) return;
+        const tileSize = 20;
+        const gap = 4;
+        const totalSize = tileSize + gap;
+        const cols = Math.ceil(window.innerWidth / totalSize) + 2;
+        const rows = Math.ceil(window.innerHeight / totalSize) + 2;
+        const tileData = [];
+        for (let i = 0; i < rows * cols; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'mosaic-tile';
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            tileData.push({
+                el: tile,
+                x: col * totalSize + tileSize / 2 - 20,
+                y: row * totalSize + tileSize / 2 - 20,
+                col: col,
+                row: row,
+                baseIntensity: Math.random() * 0.4,
+                flicker: 0,
+                flickerTarget: 0,
+                flickerSpeed: 0.02 + Math.random() * 0.03
+            });
+            mosaic.appendChild(tile);
+        }
+        mosaic.style.gridTemplateColumns = `repeat(${cols}, ${tileSize}px)`;
+        let mouseX = -1000, mouseY = -1000, time = 0;
+        const maxDistance = 80;
+        document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+        setInterval(() => {
+            const numFlickers = 1 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numFlickers; i++) {
+                const randomIndex = Math.floor(Math.random() * tileData.length);
+                tileData[randomIndex].flickerTarget = 0.4 + Math.random() * 0.4;
+            }
+        }, 400);
+        function animate() {
+            time += 0.05;
+            for (let i = 0; i < tileData.length; i++) {
+                const t = tileData[i];
+                if (t.flicker < t.flickerTarget) {
+                    t.flicker = Math.min(t.flickerTarget, t.flicker + t.flickerSpeed);
+                } else if (t.flicker > 0) {
+                    t.flicker = Math.max(0, t.flicker - t.flickerSpeed * 0.5);
+                    if (t.flicker <= 0) t.flickerTarget = 0;
+                }
+                const dx = mouseX - t.x, dy = mouseY - t.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+                const blobDistort = 1 + 0.15 * Math.sin(angle * 3 + time * 0.8) + 0.1 * Math.sin(angle * 5 - time * 1.2) + 0.08 * Math.sin(angle * 7 + time * 0.5);
+                const effectiveMaxDist = maxDistance * blobDistort;
+                const nearMouse = distance < effectiveMaxDist;
+                if (nearMouse || t.flicker > 0.01) {
+                    const mouseInfluence = nearMouse ? 1 - distance / effectiveMaxDist : 0;
+                    const wave = Math.sin(time + t.col * 0.2 + t.row * 0.15) * 0.2;
+                    const intensity = Math.min(1, t.baseIntensity + wave + mouseInfluence * 0.6 + t.flicker);
+                    const hue = 330 - (t.col / cols) * 120;
+                    const combinedInfluence = Math.max(mouseInfluence, t.flicker);
+                    const saturation = 50 + combinedInfluence * 25;
+                    const lightness = 60 + intensity * 20;
+                    const alpha = Math.max(mouseInfluence * 0.9, t.flicker * 0.7);
+                    t.el.style.backgroundColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+                    t.el.style.transform = nearMouse ? `scale(${1 + mouseInfluence * 0.12})` : '';
+                } else if (t.el.style.backgroundColor !== 'transparent') {
+                    t.el.style.backgroundColor = 'transparent';
+                    t.el.style.transform = '';
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+        window.addEventListener('resize', () => { location.reload(); });
+    })();
+    </script>
 </body>
 </html>
