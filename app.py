@@ -41,6 +41,30 @@ app.permanent_session_lifetime = timedelta(days=7)
 # Global state for commentary caching
 commentary_history = {}  # {dashboard_id: [list of commentary entries]}
 last_generated = {}      # {dashboard_id: timestamp of last generation}
+
+# Discord API cache to reduce rate limiting
+discord_cache = {}  # {cache_key: {"data": ..., "timestamp": ...}}
+CACHE_TTL = 60  # Cache TTL in seconds
+
+def get_cached(key):
+    """Get cached data if not expired."""
+    if key in discord_cache:
+        entry = discord_cache[key]
+        if time.time() - entry["timestamp"] < CACHE_TTL:
+            print(f"[CACHE HIT] {key}")
+            return entry["data"]
+    return None
+
+def set_cached(key, data):
+    """Store data in cache."""
+    discord_cache[key] = {"data": data, "timestamp": time.time()}
+
+def invalidate_cache(key_prefix):
+    """Invalidate cache entries matching prefix."""
+    keys_to_delete = [k for k in discord_cache if k.startswith(key_prefix)]
+    for k in keys_to_delete:
+        del discord_cache[k]
+
 #Home screen
 @app.route('/')
 def index():
@@ -53,23 +77,33 @@ def index():
     if 'github_access_token' not in session:
         return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
 
-    #Get all the servers the bot is in
-    bot_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"}).json()
-    if not isinstance(bot_servers, list):
-        # Bot token error - clear session and re-login
-        return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
-    bot_server_ids = []
-    for g in bot_servers:
-        name = get_repo_name(g["id"], {"Authorization": f"Bot {BOT_TOKEN}"})
-        if name is not None:
-            bot_server_ids.append(g["id"])
+    #Get all the servers the bot is in (cached)
+    bot_server_ids = get_cached("bot_server_ids")
+    if bot_server_ids is None:
+        print("[DISCORD API] GET /users/@me/guilds (bot token) - index page load")
+        bot_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"}).json()
+        if not isinstance(bot_servers, list):
+            # Bot token error - clear session and re-login
+            return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
+        bot_server_ids = []
+        for g in bot_servers:
+            print(f"[DISCORD API] get_repo_name for guild {g['id']} - index page load")
+            name = get_repo_name(g["id"], {"Authorization": f"Bot {BOT_TOKEN}"})
+            if name is not None:
+                bot_server_ids.append(g["id"])
+        set_cached("bot_server_ids", bot_server_ids)
 
-    #Get all the servers the user is in
-    user_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bearer {session['discord_access_token']}"}).json()
-    if not isinstance(user_servers, list):
-        # Token expired or invalid - clear session and re-login
-        session.clear()
-        return redirect(url_for('index'))
+    #Get all the servers the user is in (cached per user)
+    user_cache_key = f"user_servers_{session.get('username', 'unknown')}"
+    user_servers = get_cached(user_cache_key)
+    if user_servers is None:
+        print("[DISCORD API] GET /users/@me/guilds (user token) - index page load")
+        user_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bearer {session['discord_access_token']}"}).json()
+        if not isinstance(user_servers, list):
+            # Token expired or invalid - clear session and re-login
+            session.clear()
+            return redirect(url_for('index'))
+        set_cached(user_cache_key, user_servers)
 
     #Make a list of all servers we can participate in
     servers = []
@@ -79,7 +113,7 @@ def index():
             servers.append(s)
         elif int(s['permissions']) & 0x20:
             servers.append(s)
-    
+
     #Show the page
     return render_template("index.html", guilds=servers, username=session['username'], client_id=DISCORD_CLIENT_ID, redirect_uri=REDIRECT_URI) 
 
@@ -93,10 +127,12 @@ def discord_callback():
         guild_id = state_data.get('guild_id')
         repo = state_data.get('repo')
         discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
-        
+
+        print(f"[DISCORD API] create_storage_channel for guild {guild_id} - bot setup")
         name = create_storage_channel(guild_id, repo, discord_headers)
         if name is not None:
             print(f"Bot added to Guild: {guild_id} for Repo: {repo}")
+            invalidate_cache("bot_server_ids")  # Refresh bot server list
         else:
             print("error")
             
@@ -106,6 +142,7 @@ def discord_callback():
     code = request.args.get('code')
     
     #Perform handshake
+    print("[DISCORD API] POST /oauth2/token - discord callback token exchange")
     data = {'client_id': DISCORD_CLIENT_ID, 'client_secret': DISCORD_CLIENT_SECRET, 'grant_type': 'authorization_code', 'code': code, 'redirect_uri': REDIRECT_URI}
     r = requests.post("https://discord.com/api/oauth2/token", data=data).json()
     
@@ -114,8 +151,10 @@ def discord_callback():
     session['discord_access_token'] = r.get('access_token')
     
     #Get username
+    print("[DISCORD API] GET /users/@me - discord callback get username")
     user_data = requests.get("https://discord.com/api/users/@me", headers={"Authorization": f"Bearer {session['discord_access_token']}"}).json()
     session['username'] = user_data.get('username')
+    invalidate_cache(f"user_servers_{session['username']}")  # Fresh data on login
     
     return redirect(url_for('index'))
           
@@ -160,20 +199,25 @@ def dashboard(dashboard_id):
 
     #Fetch all data
     github_data = get_detailed_github_data("azynm/blahajathon", github_headers, last_time)
+    print(f"[DISCORD API] fetch_all_messages for guild {dashboard_id} - dashboard load")
     discord_data = fetch_all_messages(dashboard_id, discord_headers, last_time)
 
-    project_name = dashboard_id
-    try:
-        guild_resp = requests.get(
-            f"https://discord.com/api/guilds/{dashboard_id}",
-            headers=discord_headers,
-            timeout=10,
-        )
-        if guild_resp.ok:
-            guild_data = guild_resp.json()
-            project_name = guild_data.get("name", dashboard_id)
-    except requests.RequestException:
+    project_name = get_cached(f"guild_name_{dashboard_id}")
+    if project_name is None:
         project_name = dashboard_id
+        try:
+            print(f"[DISCORD API] GET /guilds/{dashboard_id} - dashboard get guild name")
+            guild_resp = requests.get(
+                f"https://discord.com/api/guilds/{dashboard_id}",
+                headers=discord_headers,
+                timeout=10,
+            )
+            if guild_resp.ok:
+                guild_data = guild_resp.json()
+                project_name = guild_data.get("name", dashboard_id)
+                set_cached(f"guild_name_{dashboard_id}", project_name)
+        except requests.RequestException:
+            project_name = dashboard_id
     
     leaderboard = get_leaderboard()
     last_updated = get_scores_last_updated()
@@ -252,6 +296,7 @@ def commentary_history_api(dashboard_id):
     if now - last_gen > 60:
         discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
         github_headers = {"Authorization": f"token {session['github_access_token']}"}
+        print(f"[DISCORD API] collect_events for guild {dashboard_id} - commentary generation")
         events = collect_events(dashboard_id, discord_headers, github_headers, "azynm/CoLeague")
 
         # Only generate if we got events AND messages have changed
