@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, session, request, render_template, Response
+from flask import Flask, redirect, url_for, session, request, render_template, Response, jsonify
 import os
 from dotenv import load_dotenv
 load_dotenv(override=True)
@@ -8,6 +8,7 @@ import requests
 from discord_logic import fetch_all_messages, analyse_sentiment
 from commentator.commentator import generate_commentary_audio
 from github_logic import get_detailed_github_data
+from scoring import update_scores, get_leaderboard
 import json
 from pathlib import Path
 import uuid
@@ -73,6 +74,7 @@ def collect_discord_events(dashboard_id, github_token=None):
     }
 
     # Add GitHub data if token available
+    github_data = []
     if github_token:
         github_headers = {"Authorization": f"token {github_token}"}
         github_data = get_detailed_github_data("azynm/blahajathon", github_headers, last_time)
@@ -105,6 +107,9 @@ def collect_discord_events(dashboard_id, github_token=None):
                     })
 
         print(f"GitHub data — commits: {len(events['recent_commits'])}, PRs merged: {events['pull_requests_merged']}")
+
+    # Update scores with the fetched data
+    update_scores(discord_messages, sentiment, github_data)
 
     # Limit commits to avoid prompt being too long
     events["recent_commits"] = events["recent_commits"][:5]
@@ -335,6 +340,13 @@ def commentary_latest(dashboard_id):
 
     latest = history[-1]
     return Response(latest["audio"], mimetype="audio/mpeg")
+
+
+@app.route('/api/leaderboard')
+def leaderboard_api():
+    """Return the current leaderboard with scores."""
+    leaderboard = get_leaderboard()
+    return jsonify(leaderboard)
 
 
 #Actually starts web server
