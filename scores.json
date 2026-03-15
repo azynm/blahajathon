@@ -113,7 +113,8 @@
         "new_branches": 1,
         "prs_merged": 30,
         "good_merges": 30
-      }
+      },
+      "display_name": "soupdewoop"
     }
   },
   "branches_claimed": {
@@ -121,5 +122,5 @@
     "commentatorfix": "Zayn",
     "improve-commentary": "Zayn"
   },
-  "last_updated": "2026-03-15T03:06:27.918093"
+  "last_updated": "2026-03-15T04:07:19.916941"
 }

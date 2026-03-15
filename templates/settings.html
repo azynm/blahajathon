@@ -3,97 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoLeague Settings</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>CoLeague - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <style>
-        .toggle-on { background-color: #0ea5e9; }
-        .toggle-off { background-color: #cbd5e1; }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="league-bg">
-    <main class="settings-shell">
-        <section class="settings-card menu-bar">
-            <div class="settings-header">
-                <h1 class="settings-title">Profile Settings</h1>
-                <div class="settings-menu menu-anchor" x-data="{ open: false }">
+<body class="text-slate-800 league-bg min-h-screen">
+    <!-- Commit Tile Mosaic Background -->
+    <div class="mosaic-container" id="mosaic"></div>
+
+    <div class="mx-auto max-w-7xl px-4 pb-8 pt-5 sm:px-6 lg:px-8 fade-in">
+
+        <!-- Top Nav Bar -->
+        <nav class="glass card-glow menu-bar mb-6 rounded-2xl bg-gradient-to-r from-[#F3E8FF]/80 to-[#E0F2FE]/90 px-5 py-4">
+            <div class="flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <img src="{{ url_for('static', filename='CLeagueLogo.svg') }}" alt="CoLeague Logo" class="h-20 w-20">
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight text-slate-900">Profile Settings</h1>
+                        <p class="mt-1 text-sm text-slate-600">Manage your account preferences</p>
+                    </div>
+                </div>
+
+                <div class="menu-anchor" x-data="{ open: false }">
                     <button
                         type="button"
-                        class="menu-trigger"
+                        class="flex h-10 items-center justify-center rounded-full border border-white/80 bg-white/80 px-4 text-xs font-semibold tracking-wide text-slate-700 shadow-lg shadow-sky-200/60 hover:bg-white transition"
                         @click="open = !open"
                     >
                         Menu
                     </button>
+
                     <div
                         x-cloak
                         x-show="open"
                         @click.outside="open = false"
                         x-transition
-                        class="glass menu-panel"
+                        class="glass absolute right-0 mt-3 w-48 rounded-xl p-2 text-sm"
                     >
-                        <a href="#" onclick="history.back(); return false;" class="menu-link">Go Back</a>
-                        <a href="{{ url_for('settings') }}" class="menu-link">Settings</a>
-                        <a href="{{ url_for('logout') }}" class="menu-link">Logout</a>
+                        <a href="#" onclick="history.back(); return false;" class="mt-1 block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-700 hover:bg-white/50">Go Back</a>
+                        <a href="{{ url_for('settings') }}" class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-700 hover:bg-white/50">Settings</a>
+                        <a href="{{ url_for('logout') }}" class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-700 hover:bg-white/50">Logout</a>
                     </div>
                 </div>
             </div>
-            <p class="settings-sub">Upload a profile picture or replace your current one.</p>
+        </nav>
 
+        <!-- Settings Content -->
+        <section class="glass rounded-2xl p-6">
             {% if saved %}
-            <div class="notice notice-ok">Profile updated successfully.</div>
+            <div class="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
+                Profile updated successfully.
+            </div>
             {% endif %}
 
             {% if error_message %}
-            <div class="notice notice-err">{{ error_message }}</div>
+            <div class="mb-4 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">
+                {{ error_message }}
+            </div>
             {% endif %}
 
-            <div class="preview">
-                {% if current_user.avatar %}
-                <img src="{{ current_user.avatar }}" alt="Current profile picture" class="preview-avatar">
-                {% else %}
-                <div class="preview-avatar preview-avatar-fallback">No Pic</div>
-                {% endif %}
-                <div>
-                    <p class="preview-name">{{ current_user.name }}</p>
-                    <p class="preview-role">{{ current_user.role }}</p>
+            <!-- Profile Preview -->
+            <div class="mb-6 rounded-xl border border-white/60 bg-gradient-to-br from-[#F3E8FF]/50 to-[#E0F2FE]/50 p-4">
+                <div class="flex items-center gap-4">
+                    {% if current_user.avatar %}
+                    <img src="{{ current_user.avatar }}" alt="Current profile picture" class="h-16 w-16 rounded-full border-2 border-white/80 object-cover shadow-md">
+                    {% else %}
+                    <div class="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white/80 bg-white/70 text-sm font-bold text-slate-500 shadow-md">
+                        No Pic
+                    </div>
+                    {% endif %}
+                    <div>
+                        <p class="font-semibold text-slate-900">{{ current_user.name }}</p>
+                        <p class="text-sm text-slate-500">{{ current_user.role }}</p>
+                    </div>
                 </div>
             </div>
 
-            <form method="post" enctype="multipart/form-data">
-                <div class="field">
-                    <label for="display_name">Display Name</label>
-                    <input class="input" id="display_name" name="display_name" type="text" placeholder="Your display name" value="{{ current_user.name }}">
+            <form method="post" enctype="multipart/form-data" class="space-y-5">
+                <!-- Display Name -->
+                <div>
+                    <label for="display_name" class="mb-2 block text-sm font-semibold text-slate-700">Display Name</label>
+                    <input
+                        class="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-sm text-slate-700 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-violet-300"
+                        id="display_name"
+                        name="display_name"
+                        type="text"
+                        placeholder="Your display name"
+                        value="{{ current_user.name }}"
+                    >
                 </div>
 
-                <div class="field">
-                    <label for="picture_file">Profile Picture</label>
-                    <input class="input" id="picture_file" name="picture_file" type="file" accept=".png,.jpg,.jpeg,.gif,.webp,image/*">
+                <!-- Profile Picture -->
+                <div>
+                    <label for="picture_file" class="mb-2 block text-sm font-semibold text-slate-700">Profile Picture</label>
+                    <input
+                        class="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-sm text-slate-700 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-violet-300 file:mr-4 file:rounded-lg file:border-0 file:bg-violet-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-violet-700 hover:file:bg-violet-200"
+                        id="picture_file"
+                        name="picture_file"
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.gif,.webp,image/*"
+                    >
                 </div>
 
-                <div class="field" x-data="{ enabled: {{ 'true' if autoplay_commentary else 'false' }} }">
-                    <label>Auto-play Commentary</label>
-                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.25rem;">
+                <!-- Auto-play Commentary Toggle -->
+                <div x-data="{ enabled: {{ 'true' if autoplay_commentary else 'false' }} }">
+                    <label class="mb-3 block text-sm font-semibold text-slate-700">Auto-play Commentary</label>
+                    <div
+                        class="flex items-center justify-between rounded-xl border border-white/60 bg-white/50 px-4 py-4 transition hover:bg-white/80"
+                        :class="enabled ? 'border-violet-300 bg-violet-50/50' : ''"
+                    >
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+                                :class="enabled ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-400'"
+                            >
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="font-medium text-slate-800" x-text="enabled ? 'Auto-play Enabled' : 'Auto-play Disabled'"></p>
+                                <p class="text-xs text-slate-500" x-text="enabled ? 'New commentary plays automatically' : 'Click play to hear commentary'"></p>
+                            </div>
+                        </div>
                         <button
                             type="button"
                             @click="enabled = !enabled"
-                            :class="enabled ? 'toggle-on' : 'toggle-off'"
-                            style="position: relative; width: 44px; height: 24px; border-radius: 9999px; border: none; cursor: pointer; transition: background-color 0.2s;"
+                            class="relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+                            :class="enabled ? 'bg-violet-500' : 'bg-slate-300'"
                         >
+                            <span class="sr-only">Toggle auto-play</span>
                             <span
-                                style="position: absolute; top: 2px; width: 20px; height: 20px; border-radius: 9999px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: left 0.2s;"
-                                :style="enabled ? 'left: 22px' : 'left: 2px'"
+                                class="pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                :class="enabled ? 'translate-x-7' : 'translate-x-0'"
                             ></span>
                         </button>
-                        <span style="font-size: 0.875rem; color: #64748b;" x-text="enabled ? 'Audio plays automatically on new updates' : 'Audio only plays when you press Play'"></span>
                         <input type="hidden" name="autoplay_commentary" :value="enabled ? '1' : '0'">
                     </div>
                 </div>
 
-                <div class="button-row">
-                    <button class="btn btn-primary" type="submit">Save Profile</button>
+                <!-- Save Button -->
+                <div class="pt-2">
+                    <button
+                        type="submit"
+                        class="w-full rounded-xl bg-gradient-to-r from-violet-500 to-sky-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-200/50 transition hover:from-violet-600 hover:to-sky-600 hover:shadow-xl"
+                    >
+                        Save Changes
+                    </button>
                 </div>
             </form>
         </section>
-    </main>
+    </div>
+
+    <!-- Mosaic Animation Script -->
+    <script>
+    (function() {
+        const mosaic = document.getElementById('mosaic');
+        if (!mosaic) return;
+        const tileSize = 20;
+        const gap = 4;
+        const totalSize = tileSize + gap;
+        const cols = Math.ceil(window.innerWidth / totalSize) + 2;
+        const rows = Math.ceil(window.innerHeight / totalSize) + 2;
+        const tileData = [];
+        for (let i = 0; i < rows * cols; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'mosaic-tile';
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            tileData.push({
+                el: tile,
+                x: col * totalSize + tileSize / 2 - 20,
+                y: row * totalSize + tileSize / 2 - 20,
+                col: col,
+                row: row,
+                baseIntensity: Math.random() * 0.4,
+                flicker: 0,
+                flickerTarget: 0,
+                flickerSpeed: 0.02 + Math.random() * 0.03
+            });
+            mosaic.appendChild(tile);
+        }
+        mosaic.style.gridTemplateColumns = `repeat(${cols}, ${tileSize}px)`;
+        let mouseX = -1000, mouseY = -1000, time = 0;
+        const maxDistance = 80;
+        document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+        setInterval(() => {
+            const numFlickers = 1 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numFlickers; i++) {
+                const randomIndex = Math.floor(Math.random() * tileData.length);
+                tileData[randomIndex].flickerTarget = 0.4 + Math.random() * 0.4;
+            }
+        }, 400);
+        function animate() {
+            time += 0.05;
+            for (let i = 0; i < tileData.length; i++) {
+                const t = tileData[i];
+                if (t.flicker < t.flickerTarget) {
+                    t.flicker = Math.min(t.flickerTarget, t.flicker + t.flickerSpeed);
+                } else if (t.flicker > 0) {
+                    t.flicker = Math.max(0, t.flicker - t.flickerSpeed * 0.5);
+                    if (t.flicker <= 0) t.flickerTarget = 0;
+                }
+                const dx = mouseX - t.x, dy = mouseY - t.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+                const blobDistort = 1 + 0.15 * Math.sin(angle * 3 + time * 0.8) + 0.1 * Math.sin(angle * 5 - time * 1.2) + 0.08 * Math.sin(angle * 7 + time * 0.5);
+                const effectiveMaxDist = maxDistance * blobDistort;
+                const nearMouse = distance < effectiveMaxDist;
+                if (nearMouse || t.flicker > 0.01) {
+                    const mouseInfluence = nearMouse ? 1 - distance / effectiveMaxDist : 0;
+                    const wave = Math.sin(time + t.col * 0.2 + t.row * 0.15) * 0.2;
+                    const intensity = Math.min(1, t.baseIntensity + wave + mouseInfluence * 0.6 + t.flicker);
+                    const hue = 330 - (t.col / cols) * 120;
+                    const combinedInfluence = Math.max(mouseInfluence, t.flicker);
+                    const saturation = 50 + combinedInfluence * 25;
+                    const lightness = 60 + intensity * 20;
+                    const alpha = Math.max(mouseInfluence * 0.9, t.flicker * 0.7);
+                    t.el.style.backgroundColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+                    t.el.style.transform = nearMouse ? `scale(${1 + mouseInfluence * 0.12})` : '';
+                } else if (t.el.style.backgroundColor !== 'transparent') {
+                    t.el.style.backgroundColor = 'transparent';
+                    t.el.style.transform = '';
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+        window.addEventListener('resize', () => { location.reload(); });
+    })();
+    </script>
 </body>
 </html>

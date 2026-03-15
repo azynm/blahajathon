@@ -374,9 +374,8 @@ body {
     min-height: 100vh;
     background:
         radial-gradient(circle at 8% 10%, rgba(224, 242, 254, 0.9), transparent 35%),
-        radial-gradient(circle at 84% 12%, rgba(243, 232, 255, 0.94), transparent 38%),
         radial-gradient(circle at 72% 85%, rgba(224, 242, 254, 0.72), transparent 30%),
-        linear-gradient(140deg, #fbfdff 0%, #f1f8ff 42%, #f8f0ff 100%);
+        linear-gradient(140deg, #fbfdff 0%, #f1f8ff 42%, #ffffff 100%);
     color: var(--text);
     font-family: 'Space Grotesk', sans-serif;
     display: flex;
@@ -399,7 +398,7 @@ body {
 }
 
 /* ── Commit Tile Mosaic ── */
-.login-page .mosaic-container {
+.mosaic-container {
     position: fixed;
     top: -20px;
     left: -20px;
@@ -411,7 +410,7 @@ body {
     pointer-events: none;
 }
 
-.login-page .mosaic-tile {
+.mosaic-tile {
     width: 20px;
     height: 20px;
     border-radius: 3px;
