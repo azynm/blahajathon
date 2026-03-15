@@ -238,7 +238,7 @@ def generate_commentary_audio(events: dict, style: str = None) -> bytes:
 
 def collect_events(dashboard_id, discord_headers, github_headers, repo_name):
     now = datetime.now()
-    last_time = now - timedelta(seconds=20)
+    last_time = now - timedelta(seconds=120)
     last_time_git = now - timedelta(seconds=120)    
 
     discord_messages = fetch_all_messages(dashboard_id, discord_headers, last_time)

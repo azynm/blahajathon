@@ -12,34 +12,11 @@
   <!-- Commit Tile Mosaic Background -->
   <div class="mosaic-container" id="mosaic"></div>
 
-  <!-- Single trunk line dropping from top-centre, with 3 commit nodes -->
   <svg class="branch-bg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMin slice" xmlns="http://www.w3.org/2000/svg">
     <line class="trunk-line" x1="720" y1="0" x2="720" y2="460"/>
   </svg>
 
   <div class="card">
-    <div class="card-icon">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- top-left node -->
-        <circle cx="5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="5" cy="6" r="1" fill="currentColor"/>
-        <!-- top-right node -->
-        <circle cx="19" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="19" cy="6" r="1" fill="currentColor"/>
-        <!-- bottom-centre node -->
-        <circle cx="12" cy="20" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="12" cy="20" r="1" fill="currentColor"/>
-        <!-- stem up from bottom node -->
-        <line x1="12" y1="17.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- horizontal crossbar -->
-        <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- left vertical up to top-left node -->
-        <line x1="5" y1="12" x2="5" y2="8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- right vertical up to top-right node -->
-        <line x1="19" y1="12" x2="19" y2="8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </div>
-
     <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
       <img src="{{ url_for('static', filename='CLeagueLogo.svg') }}" alt="CoLeague Logo" style="height: 5rem; width: 5rem;">
       <h1>Welcome to CoLeague Setup</h1>

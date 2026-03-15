@@ -28,7 +28,7 @@
             commentaryHistory: [],
             currentlyPlaying: null,
             isPlaying: false,
-            countdown: 20,
+            countdown: 60,
             isFetching: false,
             autoplay: {{ 'true' if autoplay_commentary is defined and autoplay_commentary else 'false' }},
             lastSeenEntryId: null,
@@ -98,7 +98,7 @@
                 }
                 await this.fetchLeaderboard();
                 this.isFetching = false;
-                this.countdown = 20;
+                this.countdown = 60;
             }
         }"
         x-init="

@@ -25,7 +25,8 @@ def fetch_all_messages(dashboard_id, headers, last_time):
     out = []
     for c in text_channels:
         out.extend(fetch_latest_messages(c['id'], headers, last_time))
-        
+        time.sleep(0.5)  # Rate limit protection: 500ms between channels
+
     return out
 
 def fetch_latest_messages(channel_id, headers, since_datetime):
@@ -142,18 +143,24 @@ def get_repo_name(guild_id, discord_headers):
     global channels
     if channels == 0:
         r = requests.get(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=discord_headers)
+        if r.status_code == 429:
+            time.sleep(r.json().get('retry_after', 1))
+            return get_repo_name(guild_id, discord_headers)
         if r.status_code != 200:
             return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
 
         #Filter for text channels and scrape messages
         channels = r.json()
-    
+
 
     config_channel = next((c for c in channels if c['name'] == 'bot-internal-config'), None)
-    
+
     if config_channel:
         # Fetch the first message in that channel
         msg_resp = requests.get(f"https://discord.com/api/v10/channels/{config_channel['id']}/messages?limit=1", headers=discord_headers)
+        if msg_resp.status_code == 429:
+            time.sleep(msg_resp.json().get('retry_after', 1))
+            return get_repo_name(guild_id, discord_headers)
         messages = msg_resp.json()
         if messages:
             return messages[0]['content']
