@@ -34,7 +34,7 @@ GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_C
 #Start Flask app
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.secret_key = "bum4"
+app.secret_key = "rasclart"
 app.config['UPLOAD_FOLDER'] = str(Path("static") / "uploads")
 app.permanent_session_lifetime = timedelta(days=7)
 
@@ -46,12 +46,15 @@ last_generated = {}      # {dashboard_id: timestamp of last generation}
 discord_cache = {}  # {cache_key: {"data": ..., "timestamp": ...}}
 CACHE_TTL = 300  # Cache TTL in seconds (5 minutes)
 
-def get_cached(key):
-    """Get cached data if not expired."""
+def get_cached(key, allow_stale=False):
+    """Get cached data if not expired. If allow_stale=True, return even expired data."""
     if key in discord_cache:
         entry = discord_cache[key]
         if time.time() - entry["timestamp"] < CACHE_TTL:
             print(f"[CACHE HIT] {key}")
+            return entry["data"]
+        elif allow_stale:
+            print(f"[CACHE STALE] {key} (serving anyway)")
             return entry["data"]
     return None
 
