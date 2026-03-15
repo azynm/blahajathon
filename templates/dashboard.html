@@ -12,6 +12,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="text-slate-800 league-bg">
+    <!-- Commit Tile Mosaic Background -->
+    <div class="mosaic-container" id="mosaic"></div>
+
     {% set dashboard_user = current_user if current_user is defined else {'name': 'Guest User', 'role': 'Viewer', 'avatar': 'https://i.pravatar.cc/100?u=guest-user'} %}
     {% set dashboard_players = players if players is defined else [] %}
     {% set dashboard_last_updated = last_updated if last_updated is defined else 'Not available' %}
@@ -21,6 +24,7 @@
             selectedPlayer: null,
             splitView: false,
             players: [],
+            lastUpdated: '{{ dashboard_last_updated }}',
             commentaryHistory: [],
             currentlyPlaying: null,
             isPlaying: false,
@@ -51,11 +55,34 @@
                 try {
                     const response = await fetch('/api/leaderboard');
                     if (response.ok) {
-                        this.players = await response.json();
+                        const payload = await response.json();
+                        if (Array.isArray(payload)) {
+                            this.players = payload;
+                        } else {
+                            this.players = payload.players || [];
+                        }
                     }
                 } catch (e) {
                     console.error('Leaderboard fetch failed:', e);
                 }
+            },
+            positiveSlots(player) {
+                const positive = Number(player?.stats?.positive_messages || 0);
+                const negative = Number(player?.stats?.negative_messages || 0);
+                const total = positive + negative;
+                if (total <= 0) return 0;
+                return Math.round((positive / total) * 5);
+            },
+            negativeSlots(player) {
+                const positive = Number(player?.stats?.positive_messages || 0);
+                const negative = Number(player?.stats?.negative_messages || 0);
+                const total = positive + negative;
+                if (total <= 0) return 0;
+                return Math.round((negative / total) * 5);
+            },
+            neutralSlots(player) {
+                const neutral = 5 - this.positiveSlots(player) - this.negativeSlots(player);
+                return Math.max(0, neutral);
             },
             async fetchHistory() {
                 if (this.isFetching) return;
@@ -66,6 +93,9 @@
                         const newHistory = await response.json();
                         const latestNew = newHistory.length > 0 ? newHistory[newHistory.length - 1] : null;
                         this.commentaryHistory = newHistory;
+                        if (latestNew && latestNew.timestamp) {
+                            this.lastUpdated = new Date(latestNew.timestamp * 1000).toLocaleString();
+                        }
                         // Autoplay if enabled and there's a new entry we haven't seen
                         if (this.autoplay && latestNew && latestNew.id !== this.lastSeenEntryId) {
                             this.lastSeenEntryId = latestNew.id;
@@ -100,9 +130,12 @@
     >
         <nav class="glass card-glow menu-bar mb-6 rounded-2xl bg-gradient-to-r from-[#F3E8FF]/80 to-[#E0F2FE]/90 px-5 py-4">
             <div class="flex items-center justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900">CoLeague - {{ project_name if project_name is defined else 'Project' }}</h1>
-                    <p class="mt-1 text-sm text-slate-600" style="font-family: 'JetBrains Mono', monospace;">// last updated: <span style="font-weight: 600;">{{ dashboard_last_updated }}</span></p>
+                <div class="flex items-center gap-3">
+                    <img src="{{ url_for('static', filename='CLeagueLogo.svg') }}" alt="CoLeague Logo" class="h-20 w-20">
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight text-slate-900">CoLeague - {{ project_name if project_name is defined else 'Project' }}</h1>
+                        <p class="mt-1 text-sm text-slate-600" style="font-family: 'JetBrains Mono', monospace;">// last updated: <span style="font-weight: 600;">{{ dashboard_last_updated }}</span></p>
+                    </div>
                 </div>
 
                 <div class="menu-anchor" x-data="{ open: false }">
@@ -121,7 +154,7 @@
                         x-transition
                         class="glass absolute right-0 mt-3 w-48 rounded-xl p-2 text-sm"
                     >
-                        <a href="#" onclick="history.back(); return false;" class="mt-1 block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-700 hover:bg-white/50">Go Back</a>
+                        <a href="#" onclick="return handleGoBack(event);" class="mt-1 block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-700 hover:bg-white/50">Go Back</a>
                         <a href="{{ url_for('settings') }}" class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-700 hover:bg-white/50">Settings</a>
                         <a href="{{ url_for('logout') }}" class="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold tracking-wide text-slate-700 hover:bg-white/50">Logout</a>
                     </div>
@@ -217,24 +250,28 @@
                                             <span
                                                 class="inline-flex h-5 w-5 items-center justify-center rounded-full"
                                                 :class="{
-                                                    'bg-emerald-100 text-emerald-600': i <= Math.round(player.stats.positive_messages / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5),
-                                                    'bg-rose-100 text-rose-600': i > Math.round(player.stats.positive_messages / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5) && i <= Math.round((player.stats.positive_messages + player.stats.negative_messages) / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5),
-                                                    'bg-slate-100 text-slate-500': i > Math.round((player.stats.positive_messages + player.stats.negative_messages) / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5)
+                                                    'bg-emerald-100 text-emerald-600': i <= positiveSlots(player),
+                                                    'bg-rose-100 text-rose-600': i > positiveSlots(player) && i <= positiveSlots(player) + negativeSlots(player),
+                                                    'bg-slate-100 text-slate-500': i > positiveSlots(player) + negativeSlots(player)
                                                 }"
                                             >
-                                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                <svg x-show="i <= positiveSlots(player)" class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                                                     <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.8" />
                                                     <circle cx="7.5" cy="8.2" r="1" fill="currentColor" />
                                                     <circle cx="12.5" cy="8.2" r="1" fill="currentColor" />
-                                                    <template x-if="i <= Math.round(player.stats.positive_messages / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5)">
-                                                        <path d="M6.8 11.2c.85 1.15 1.94 1.72 3.2 1.72 1.26 0 2.35-.57 3.2-1.72" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                                                    </template>
-                                                    <template x-if="i > Math.round(player.stats.positive_messages / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5) && i <= Math.round((player.stats.positive_messages + player.stats.negative_messages) / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5)">
-                                                        <path d="M6.8 13.2c.85-1.15 1.94-1.72 3.2-1.72 1.26 0 2.35.57 3.2 1.72" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                                                    </template>
-                                                    <template x-if="i > Math.round((player.stats.positive_messages + player.stats.negative_messages) / Math.max(player.stats.positive_messages + player.stats.negative_messages, 1) * 5)">
-                                                        <path d="M7 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-                                                    </template>
+                                                    <path d="M6.8 11.2c.85 1.15 1.94 1.72 3.2 1.72 1.26 0 2.35-.57 3.2-1.72" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                                </svg>
+                                                <svg x-show="i > positiveSlots(player) && i <= positiveSlots(player) + negativeSlots(player)" class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.8" />
+                                                    <circle cx="7.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <circle cx="12.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <path d="M6.8 13.2c.85-1.15 1.94-1.72 3.2-1.72 1.26 0 2.35.57 3.2 1.72" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                                                </svg>
+                                                <svg x-show="i > positiveSlots(player) + negativeSlots(player)" class="h-4 w-4" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                                                    <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.8" />
+                                                    <circle cx="7.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <circle cx="12.5" cy="8.2" r="1" fill="currentColor" />
+                                                    <path d="M7 12h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
                                                 </svg>
                                             </span>
                                         </template>
@@ -442,7 +479,115 @@
     <audio id="commentary-audio" style="display: none;"></audio>
 
     <script>
-        // No external polling needed — handled by Alpine x-init above
+        function handleGoBack(event) {
+            if (event) event.preventDefault();
+
+            const homeUrl = "{{ url_for('index') }}";
+            const referrer = document.referrer || "";
+
+            if (!referrer) {
+                window.location.href = homeUrl;
+                return false;
+            }
+
+            try {
+                const refUrl = new URL(referrer);
+                const here = window.location;
+                const sameOrigin = refUrl.origin === here.origin;
+                const samePath = refUrl.pathname === here.pathname;
+                const refIsSettings = refUrl.pathname.startsWith("/settings");
+
+                if (!sameOrigin || samePath || refIsSettings || window.history.length <= 1) {
+                    window.location.href = homeUrl;
+                    return false;
+                }
+
+                window.history.back();
+            } catch {
+                window.location.href = homeUrl;
+            }
+
+            return false;
+        }
+    </script>
+
+    <!-- Mosaic Animation Script -->
+    <script>
+    (function() {
+        const mosaic = document.getElementById('mosaic');
+        if (!mosaic) return;
+        const tileSize = 20;
+        const gap = 4;
+        const totalSize = tileSize + gap;
+        const cols = Math.ceil(window.innerWidth / totalSize) + 2;
+        const rows = Math.ceil(window.innerHeight / totalSize) + 2;
+        const tileData = [];
+        for (let i = 0; i < rows * cols; i++) {
+            const tile = document.createElement('div');
+            tile.className = 'mosaic-tile';
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            tileData.push({
+                el: tile,
+                x: col * totalSize + tileSize / 2 - 20,
+                y: row * totalSize + tileSize / 2 - 20,
+                col: col,
+                row: row,
+                baseIntensity: Math.random() * 0.4,
+                flicker: 0,
+                flickerTarget: 0,
+                flickerSpeed: 0.02 + Math.random() * 0.03
+            });
+            mosaic.appendChild(tile);
+        }
+        mosaic.style.gridTemplateColumns = `repeat(${cols}, ${tileSize}px)`;
+        let mouseX = -1000, mouseY = -1000, time = 0;
+        const maxDistance = 80;
+        document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+        setInterval(() => {
+            const numFlickers = 1 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < numFlickers; i++) {
+                const randomIndex = Math.floor(Math.random() * tileData.length);
+                tileData[randomIndex].flickerTarget = 0.4 + Math.random() * 0.4;
+            }
+        }, 400);
+        function animate() {
+            time += 0.05;
+            for (let i = 0; i < tileData.length; i++) {
+                const t = tileData[i];
+                if (t.flicker < t.flickerTarget) {
+                    t.flicker = Math.min(t.flickerTarget, t.flicker + t.flickerSpeed);
+                } else if (t.flicker > 0) {
+                    t.flicker = Math.max(0, t.flicker - t.flickerSpeed * 0.5);
+                    if (t.flicker <= 0) t.flickerTarget = 0;
+                }
+                const dx = mouseX - t.x, dy = mouseY - t.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx);
+                const blobDistort = 1 + 0.15 * Math.sin(angle * 3 + time * 0.8) + 0.1 * Math.sin(angle * 5 - time * 1.2) + 0.08 * Math.sin(angle * 7 + time * 0.5);
+                const effectiveMaxDist = maxDistance * blobDistort;
+                const nearMouse = distance < effectiveMaxDist;
+                if (nearMouse || t.flicker > 0.01) {
+                    const mouseInfluence = nearMouse ? 1 - distance / effectiveMaxDist : 0;
+                    const wave = Math.sin(time + t.col * 0.2 + t.row * 0.15) * 0.2;
+                    const intensity = Math.min(1, t.baseIntensity + wave + mouseInfluence * 0.6 + t.flicker);
+                    const hue = 330 - (t.col / cols) * 120;
+                    const combinedInfluence = Math.max(mouseInfluence, t.flicker);
+                    const saturation = 50 + combinedInfluence * 25;
+                    const lightness = 60 + intensity * 20;
+                    const alpha = Math.max(mouseInfluence * 0.9, t.flicker * 0.7);
+                    t.el.style.backgroundColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+                    t.el.style.transform = nearMouse ? `scale(${1 + mouseInfluence * 0.12})` : '';
+                } else if (t.el.style.backgroundColor !== 'transparent') {
+                    t.el.style.backgroundColor = 'transparent';
+                    t.el.style.transform = '';
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+        window.addEventListener('resize', () => { location.reload(); });
+    })();
     </script>
 </body>
 </html>

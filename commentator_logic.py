@@ -3,6 +3,11 @@ import time
 import hashlib
 import requests
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
+import time
+from github_logic import get_detailed_github_data
+from discord_logic import fetch_all_messages, analyse_sentiment, read_storage, update_storage
+from scoring_logic import update_scores
 
 CACHE_DIR = "audio_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -78,7 +83,6 @@ def determine_style(events: dict) -> str:
     if drama >= 2:
         return "poetic"
     return "calm"
-
 
 def generate_script(events: dict, style: str = "calm") -> str:
     """
@@ -232,76 +236,57 @@ def generate_commentary_audio(events: dict, style: str = None) -> bytes:
     audio = generate_audio_from_text(script, style=style)
     return audio
 
-if __name__ == "__main__":
-    test_scenarios = {
-        # Calm game — should resolve to calm
-        "calm": {
-            "recent_commits": [
-                {"author": "Sophie", "message": "add unit tests for auth module", "lines_changed": 35},
-                {"author": "Dan", "message": "update README with setup instructions", "lines_changed": 12}
-            ],
-            "pull_requests_merged": 2,
-            "discord_sentiment": "positive",
-            "discord_spam_count": 3
-        },
-        # Heating up — should resolve to poetic (drama 3: toxic sentiment)
-        "dramatic": {
-            "recent_commits": [
-                {"author": "Liam", "message": "refactor payment service into microservice", "lines_changed": 180},
-            ],
-            "pull_requests_merged": 4,
-            "discord_sentiment": "toxic",
-            "discord_spam_count": 10,
-            "position_change_top3": False,
-            "merge_conflicts": 1
-        },
-        # Drama score blowout — should resolve to super_angry via score (drama 7: toxic + spam + merge conflicts)
-        "chaos": {
-            "recent_commits": [
-                {"author": "Raj", "message": "wip", "lines_changed": 502},
-                {"author": "Emily", "message": "idk", "lines_changed": 87}
-            ],
+def collect_events(dashboard_id, discord_headers, github_headers, repo_name):
+    now = datetime.now()
+    last_time = now - timedelta(seconds=120)
+    last_time_git = now - timedelta(seconds=120)    
+
+    discord_messages = fetch_all_messages(dashboard_id, discord_headers, last_time)
+    github_data = get_detailed_github_data(repo_name, github_headers, last_time_git)
+    
+    print(github_data)
+
+    #Checks if there are new updates
+    if len(discord_messages) > 0 or len(github_data) > 0:
+        sentiment = analyse_sentiment(discord_messages)
+    
+        # Build events dict for commentator
+        events = {
+            "discord_sentiment": sentiment["overall"],
+            "discord_highlights": sentiment["highlights"],
+            "discord_spam_count": 0,
+            "recent_commits": [],
             "pull_requests_merged": 0,
-            "discord_sentiment": "toxic",
-            "discord_spam_count": 55,
-            "merge_conflicts": 6,
-            "position_change_top3": False
-        },
-        # Instant red card — committed to main
-        "red_card_main": {
-            "recent_commits": [
-                {"author": "Tom", "message": "quick fix", "lines_changed": 4, "branch": "main"},
-            ],
-            "pull_requests_merged": 0,
-            "discord_sentiment": "neutral",
-            "discord_spam_count": 0
-        },
-        # Instant red card — buggy merge approved
-        "red_card_buggy": {
-            "recent_commits": [
-                {"author": "Priya", "message": "approve merge for release", "lines_changed": 20},
-            ],
-            "pull_requests_merged": 1,
-            "discord_sentiment": "negative",
-            "discord_spam_count": 5,
-            "buggy_merge_approved": True
-        },
-    }
+        }
+        
+        for item in github_data:
+            if item["type"] == "commit":
+                events["recent_commits"].append({
+                    "author": item["author"],
+                    "message": item["message"],
+                    "branch": "feature",  # Default, could parse from message
+                    "lines_changed": 50,  # Placeholder
+                })
+            elif item["type"] == "merge":
+                # Check if merged to main
+                events["recent_commits"].append({
+                    "author": item["author"],
+                    "message": item["message"],
+                    "branch": "main" if "main" in item["message"].lower() else "feature",
+                    "lines_changed": 100,
+                })
+            elif item["type"] == "merge_request":
+                events["pull_requests_merged"] += 1
+                # Check if merged to main branch
+                if item.get("target_branch") == "main":
+                    events["recent_commits"].append({
+                        "author": item["author"],
+                        "message": item["title"],
+                        "branch": "main",
+                        "lines_changed": 100,
+                    })
+        update_scores(discord_messages, sentiment, github_data)
 
-    output_dir = "outputs"
-    os.makedirs(output_dir, exist_ok=True)
-
-    for name, events in test_scenarios.items():
-        style = determine_style(events)
-        print(f"\n{'='*50}")
-        print(f"Scenario: {name} -> style: {style}")
-        print(f"{'='*50}")
-        audio_data = generate_commentary_audio(events)
-
-        if audio_data:
-            filepath = os.path.join(output_dir, f"test_{name}.mp3")
-            with open(filepath, "wb") as f:
-                f.write(audio_data)
-            print(f"Saved to {filepath}")
-        else:
-            print("Failed to generate audio.")
+        return events
+    else:
+        return None

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CoLeague Login</title>
+    <title>CoLeague - Login</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -9,35 +9,18 @@
 </head>
 <body class="login-page">
 
-  <!-- Single trunk line dropping from top-centre, with 3 commit nodes -->
+  <!-- Commit Tile Mosaic Background -->
+  <div class="mosaic-container" id="mosaic"></div>
+
   <svg class="branch-bg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMin slice" xmlns="http://www.w3.org/2000/svg">
     <line class="trunk-line" x1="720" y1="0" x2="720" y2="460"/>
   </svg>
 
   <div class="card">
-    <div class="card-icon">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- top-left node -->
-        <circle cx="5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="5" cy="6" r="1" fill="currentColor"/>
-        <!-- top-right node -->
-        <circle cx="19" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="19" cy="6" r="1" fill="currentColor"/>
-        <!-- bottom-centre node -->
-        <circle cx="12" cy="20" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="12" cy="20" r="1" fill="currentColor"/>
-        <!-- stem up from bottom node -->
-        <line x1="12" y1="17.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- horizontal crossbar -->
-        <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- left vertical up to top-left node -->
-        <line x1="5" y1="12" x2="5" y2="8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- right vertical up to top-right node -->
-        <line x1="19" y1="12" x2="19" y2="8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+      <img src="{{ url_for('static', filename='CLeagueLogo.svg') }}" alt="CoLeague Logo" style="height: 5rem; width: 5rem;">
+      <h1>Welcome to CoLeague Setup</h1>
     </div>
-
-    <h1>Welcome to CoLeague Setup</h1>
     <p class="subtitle">// connect your accounts to get started: </p>
 
     <div class="divider"></div>
@@ -78,6 +61,133 @@
 
 
   </div>
+
+  <script>
+    // Generate mosaic tiles
+    const mosaic = document.getElementById('mosaic');
+    const tileSize = 20;
+    const gap = 4;
+    const totalSize = tileSize + gap;
+
+    // Calculate how many tiles we need
+    const cols = Math.ceil(window.innerWidth / totalSize) + 2;
+    const rows = Math.ceil(window.innerHeight / totalSize) + 2;
+
+    // Store tile positions for fast lookup
+    const tileData = [];
+
+    // Create tiles
+    for (let i = 0; i < rows * cols; i++) {
+      const tile = document.createElement('div');
+      tile.className = 'mosaic-tile';
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      tileData.push({
+        el: tile,
+        x: col * totalSize + tileSize / 2 - 20,  // account for container offset
+        y: row * totalSize + tileSize / 2 - 20,
+        col: col,
+        row: row,
+        baseIntensity: Math.random() * 0.4,
+        flicker: 0,
+        flickerTarget: 0,
+        flickerSpeed: 0.02 + Math.random() * 0.03
+      });
+      mosaic.appendChild(tile);
+    }
+
+    // Set grid columns
+    mosaic.style.gridTemplateColumns = `repeat(${cols}, ${tileSize}px)`;
+
+    let mouseX = -1000;
+    let mouseY = -1000;
+    let time = 0;
+    const maxDistance = 80;
+
+    // Mouse tracking
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    // Random flicker trigger
+    setInterval(() => {
+      // Pick 1-3 random tiles to start flickering
+      const numFlickers = 1 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < numFlickers; i++) {
+        const randomIndex = Math.floor(Math.random() * tileData.length);
+        tileData[randomIndex].flickerTarget = 0.4 + Math.random() * 0.4;
+      }
+    }, 400);
+
+    // Animation loop - optimized
+    function animate() {
+      time += 0.05;
+
+      // Calculate which tiles to check based on mouse position
+      const startCol = Math.max(0, Math.floor((mouseX - maxDistance) / totalSize) - 1);
+      const endCol = Math.min(cols, Math.ceil((mouseX + maxDistance) / totalSize) + 1);
+      const startRow = Math.max(0, Math.floor((mouseY - maxDistance) / totalSize) - 1);
+      const endRow = Math.min(rows, Math.ceil((mouseY + maxDistance) / totalSize) + 1);
+
+      // Update all tiles
+      for (let i = 0; i < tileData.length; i++) {
+        const t = tileData[i];
+
+        // Update flicker (slow fade in/out)
+        if (t.flicker < t.flickerTarget) {
+          t.flicker = Math.min(t.flickerTarget, t.flicker + t.flickerSpeed);
+        } else if (t.flicker > 0) {
+          t.flicker = Math.max(0, t.flicker - t.flickerSpeed * 0.5);
+          if (t.flicker <= 0) t.flickerTarget = 0;
+        }
+
+        // Check if tile should show (near mouse OR flickering)
+        const dx = mouseX - t.x;
+        const dy = mouseY - t.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Blob distortion - vary radius based on angle for organic shape
+        const angle = Math.atan2(dy, dx);
+        const blobDistort = 1 +
+          0.15 * Math.sin(angle * 3 + time * 0.8) +
+          0.1 * Math.sin(angle * 5 - time * 1.2) +
+          0.08 * Math.sin(angle * 7 + time * 0.5);
+        const effectiveMaxDist = maxDistance * blobDistort;
+        const nearMouse = distance < effectiveMaxDist;
+
+        if (nearMouse || t.flicker > 0.01) {
+          const mouseInfluence = nearMouse ? 1 - distance / effectiveMaxDist : 0;
+
+          // Wavering effect
+          const wave = Math.sin(time + t.col * 0.2 + t.row * 0.15) * 0.2;
+          const intensity = Math.min(1, t.baseIntensity + wave + mouseInfluence * 0.6 + t.flicker);
+
+          // Pink to blue gradient based on position
+          const hue = 330 - (t.col / cols) * 120;
+          const combinedInfluence = Math.max(mouseInfluence, t.flicker);
+          const saturation = 50 + combinedInfluence * 25;
+          const lightness = 60 + intensity * 20;
+          const alpha = Math.max(mouseInfluence * 0.9, t.flicker * 0.7);
+
+          t.el.style.backgroundColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+          t.el.style.transform = nearMouse ? `scale(${1 + mouseInfluence * 0.12})` : '';
+        } else if (t.el.style.backgroundColor !== 'transparent') {
+          t.el.style.backgroundColor = 'transparent';
+          t.el.style.transform = '';
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // Handle resize
+    window.addEventListener('resize', () => {
+      location.reload();
+    });
+  </script>
 
 </body>
 </html>

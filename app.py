@@ -6,14 +6,15 @@ load_dotenv(override=True)
 
 import hashlib
 import requests
-from discord_logic import fetch_all_messages, analyse_sentiment
-from commentator.commentator import generate_commentary_audio
+from discord_logic import fetch_all_messages, create_storage_channel, get_repo_name
+from commentator_logic import collect_events
+from settings_logic import _is_allowed_image, _profile_context
 from github_logic import get_detailed_github_data
-from scoring import update_scores, get_leaderboard, set_display_name, resolve_player
+from scoring_logic import get_leaderboard, get_scores_last_updated, set_display_name, resolve_player
 import json
 from pathlib import Path
 import uuid
-from commentator.commentator import determine_style, generate_script, generate_audio_from_text
+from commentator_logic import determine_style, generate_script, generate_audio_from_text
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import time
@@ -26,116 +27,19 @@ DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-APP_URL = os.getenv("APP_URL", "http://127.0.0.1:5000")
-REDIRECT_URI = f"{APP_URL}/discord_callback"
-DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=65536&prompt=consent"
-GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&redirect_uri={APP_URL}/github_callback&scope=repo" 
+REDIRECT_URI = "http://127.0.0.1:5000/discord_callback"
+DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=268437520&prompt=consent"
+GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=repo" 
 
 #Start Flask app
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.secret_key = "bum2"
-
+app.secret_key = "bum4"
 app.config['UPLOAD_FOLDER'] = str(Path("static") / "uploads")
-ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 # Global state for commentary caching
 commentary_history = {}  # {dashboard_id: [list of commentary entries]}
 last_generated = {}      # {dashboard_id: timestamp of last generation}
-last_message_hash = {}   # {dashboard_id: hash of last messages to detect changes}
-
-
-def collect_discord_events(dashboard_id, github_token=None):
-    """
-    Fetch Discord messages and GitHub data, transform into events dict for commentator.
-    Returns (events_dict, messages_hash) tuple, or (None, None) on failure.
-    """
-    discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
-    now = datetime.now()
-    last_time = now - timedelta(hours=3)
-
-    # Fetch Discord messages
-    discord_messages = fetch_all_messages(dashboard_id, discord_headers, last_time)
-    if isinstance(discord_messages, str):  # Error message
-        print(f"Discord fetch error: {discord_messages}")
-        return None, None
-
-    # Create hash to detect changes
-    msg_str = "|".join(f"{m['author']}:{m['content']}:{m['timestamp']}" for m in discord_messages)
-    msg_hash = hashlib.md5(msg_str.encode()).hexdigest()
-
-    # Analyze sentiment
-    sentiment = analyse_sentiment(discord_messages)
-    print(f"Discord analysis — sentiment: {sentiment}, messages: {len(discord_messages)}")
-
-    # Build events dict for commentator
-    events = {
-        "discord_sentiment": sentiment["overall"],
-        "discord_highlights": sentiment["highlights"],
-        "discord_spam_count": 0,
-        "recent_commits": [],
-        "pull_requests_merged": 0,
-    }
-
-    # Add GitHub data if token available
-    github_data = []
-    if github_token:
-        github_headers = {"Authorization": f"token {github_token}"}
-        github_data = get_detailed_github_data("azynm/blahajathon", github_headers, last_time)
-
-        for item in github_data:
-            if item["type"] == "commit":
-                events["recent_commits"].append({
-                    "author": item["author"],
-                    "message": item["message"],
-                    "branch": "feature",  # Default, could parse from message
-                    "lines_changed": 50,  # Placeholder
-                })
-            elif item["type"] == "merge":
-                # Check if merged to main
-                events["recent_commits"].append({
-                    "author": item["author"],
-                    "message": item["message"],
-                    "branch": "main" if "main" in item["message"].lower() else "feature",
-                    "lines_changed": 100,
-                })
-            elif item["type"] == "merge_request":
-                events["pull_requests_merged"] += 1
-                # Check if merged to main branch
-                if item.get("target_branch") == "main":
-                    events["recent_commits"].append({
-                        "author": item["author"],
-                        "message": item["title"],
-                        "branch": "main",
-                        "lines_changed": 100,
-                    })
-
-        print(f"GitHub data — commits: {len(events['recent_commits'])}, PRs merged: {events['pull_requests_merged']}")
-
-    # Update scores with the fetched data
-    update_scores(discord_messages, sentiment, github_data)
-
-    # Limit commits to avoid prompt being too long
-    events["recent_commits"] = events["recent_commits"][:5]
-
-    return events, msg_hash
-
-
-def _is_allowed_image(filename: str) -> bool:
-    if not filename or "." not in filename:
-        return False
-    ext = filename.rsplit(".", 1)[1].lower()
-    return ext in ALLOWED_IMAGE_EXTENSIONS
-
-
-def _profile_context() -> dict[str, str]:
-    username = session.get('username', 'Guest User')
-    return {
-        "name": session.get('profile_name', username),
-        "role": session.get('profile_role', 'Player'),
-        "avatar": session.get('profile_picture', ''),
-    }
-
 #Home screen
 @app.route('/')
 def index():
@@ -150,11 +54,22 @@ def index():
 
     #Get all the servers the bot is in
     bot_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"}).json()
-    bot_server_ids = set([g["id"] for g in bot_servers])
+    if not isinstance(bot_servers, list):
+        # Bot token error - clear session and re-login
+        return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
+    bot_server_ids = []
+    for g in bot_servers:
+        name = get_repo_name(g["id"], {"Authorization": f"Bot {BOT_TOKEN}"})
+        if name is not None:
+            bot_server_ids.append(g["id"])
 
     #Get all the servers the user is in
     user_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bearer {session['discord_access_token']}"}).json()
-    
+    if not isinstance(user_servers, list):
+        # Token expired or invalid - clear session and re-login
+        session.clear()
+        return redirect(url_for('index'))
+
     #Make a list of all servers we can participate in
     servers = []
     for s in user_servers:
@@ -167,11 +82,25 @@ def index():
     #Show the page
     return render_template("index.html", guilds=servers, username=session['username'], client_id=DISCORD_CLIENT_ID, redirect_uri=REDIRECT_URI) 
 
-
-
 #Discord callback page
 @app.route('/discord_callback')
 def discord_callback(): 
+    state_str = request.args.get('state')
+    
+    if state_str:
+        state_data = json.loads(state_str)
+        guild_id = state_data.get('guild_id')
+        repo = state_data.get('repo')
+        discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+        
+        name = create_storage_channel(guild_id, repo, discord_headers)
+        if name is not None:
+            print(f"Bot added to Guild: {guild_id} for Repo: {repo}")
+        else:
+            print("error")
+            
+        return redirect(url_for('index'))
+
     #Get code from Discord callback for handshake
     code = request.args.get('code')
     
@@ -187,9 +116,9 @@ def discord_callback():
     session['username'] = user_data.get('username')
     
     return redirect(url_for('index'))
+          
 
-
-
+#Github callback page
 @app.route('/github_callback')
 def github_callback(): 
     #Get code from Github callback for handshake
@@ -202,8 +131,6 @@ def github_callback():
     session['github_access_token'] = r.get('access_token')
     
     return redirect(url_for('index'))
-
-
 
 #Dashboard page for each league/server
 @app.route('/dashboard/<dashboard_id>')
@@ -221,8 +148,6 @@ def dashboard(dashboard_id):
     #Fetch all data
     github_data = get_detailed_github_data("azynm/blahajathon", github_headers, last_time)
     discord_data = fetch_all_messages(dashboard_id, discord_headers, last_time)
-    
-    print(github_data, discord_data) 
 
     project_name = dashboard_id
     try:
@@ -238,10 +163,15 @@ def dashboard(dashboard_id):
         project_name = dashboard_id
     
     leaderboard = get_leaderboard()
+    last_updated = get_scores_last_updated()
 
-    return render_template("dashboard.html", players=leaderboard, project_name=project_name, autoplay_commentary=session.get('autoplay_commentary', False))
-
-
+    return render_template(
+        "dashboard.html",
+        players=leaderboard,
+        project_name=project_name,
+        autoplay_commentary=session.get('autoplay_commentary', False),
+        last_updated=last_updated,
+    )
 
 #Logout page
 @app.route('/logout')
@@ -292,13 +222,13 @@ def settings():
     saved = request.args.get('saved') == '1'
     return render_template(
         'settings.html',
-        current_user=_profile_context(),
+        current_user=_profile_context(session),
         saved=saved,
         error_message=error_message,
         autoplay_commentary=session.get('autoplay_commentary', False),
     )
 
-
+#Endpoint for commentator
 @app.route('/api/commentary-history/<dashboard_id>')
 def commentary_history_api(dashboard_id):
     """Return list of recent commentary entries (without audio bytes)."""
@@ -307,12 +237,12 @@ def commentary_history_api(dashboard_id):
 
     # Regenerate if >60s since last generation AND messages have changed
     if now - last_gen > 20:
-        github_token = session.get('github_access_token')
-        events, msg_hash = collect_discord_events(dashboard_id, github_token)
+        discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+        github_headers = {"Authorization": f"token {session['github_access_token']}"}
+        events = collect_events(dashboard_id, discord_headers, github_headers, "azynm/CoLeague")
 
         # Only generate if we got events AND messages have changed
-        if events and msg_hash != last_message_hash.get(dashboard_id):
-            print(f"DEBUG: Messages changed! Old hash: {last_message_hash.get(dashboard_id)}, New hash: {msg_hash}")
+        if events is not None:
             style = determine_style(events)
             script = generate_script(events, style=style)
             audio = generate_audio_from_text(script, style=style)
@@ -344,10 +274,9 @@ def commentary_history_api(dashboard_id):
                 })
                 commentary_history[dashboard_id] = commentary_history[dashboard_id][-10:]
                 last_generated[dashboard_id] = timestamp
-                last_message_hash[dashboard_id] = msg_hash
         else:
             print(f"DEBUG: No new messages, skipping commentary generation")
-            last_generated[dashboard_id] = now  # Update timestamp to prevent checking again immediately
+            last_generated[dashboard_id] = now
 
     history = commentary_history.get(dashboard_id, [])
     # Return without audio bytes
@@ -359,7 +288,7 @@ def commentary_history_api(dashboard_id):
         "event_log": e.get("event_log", [])
     } for e in history])
 
-
+#Endpoint for audio playback
 @app.route('/api/commentary/<dashboard_id>/<entry_id>')
 def commentary_audio(dashboard_id, entry_id):
     """Serve audio for a specific commentary entry."""
@@ -371,18 +300,7 @@ def commentary_audio(dashboard_id, entry_id):
 
     return Response(entry["audio"], mimetype="audio/mpeg")
 
-
-@app.route('/api/commentary/<dashboard_id>')
-def commentary_latest(dashboard_id):
-    """Legacy endpoint - redirects to latest entry."""
-    history = commentary_history.get(dashboard_id, [])
-    if not history:
-        return "", 204
-
-    latest = history[-1]
-    return Response(latest["audio"], mimetype="audio/mpeg")
-
-
+#Endpoint to fetch repos
 @app.route('/api/github-repos')
 def github_repos():
     """Fetch the user's GitHub repositories."""
@@ -414,9 +332,13 @@ def github_repos():
 def leaderboard_api():
     """Return the current leaderboard with scores."""
     leaderboard = get_leaderboard()
-    return jsonify(leaderboard)
+    return jsonify({
+        "players": leaderboard,
+        "last_updated": get_scores_last_updated(),
+    })
 
 
+#Actually starts web server
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 8080))
