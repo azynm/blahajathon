@@ -340,13 +340,26 @@ def get_leaderboard():
 
     leaderboard = []
     for player_id, info in players.items():
+        stats = info.get("stats", {})
         leaderboard.append({
             "id": player_id,
             "name": player_id,
-            "overall": info["overall"],
+            "overall_points": info["overall"],
             "discord_score": info["discord_score"],
             "git_score": info["git_score"],
             "recent_record": info["recent_record"][-5:],
+            "stats": {
+                "commits": stats.get("commits", 0),
+                "merge_approvals": stats.get("reviews", 0),
+                "positive_messages": stats.get("positive_mentions", 0),
+                "negative_messages": stats.get("negative_mentions", 0),
+                "response_time_mins": stats.get("reply_bonus", 0),
+                "spam_score": abs(stats.get("spam_penalty", 0)),
+                "branch_usage": stats.get("new_branches", 0),
+            },
         })
 
-    return sorted(leaderboard, key=lambda x: x["overall"], reverse=True)
+    sorted_board = sorted(leaderboard, key=lambda x: x["overall_points"], reverse=True)
+    for i, player in enumerate(sorted_board):
+        player["rank"] = i + 1
+    return sorted_board

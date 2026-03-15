@@ -233,10 +233,9 @@ def dashboard(dashboard_id):
     except requests.RequestException:
         project_name = dashboard_id
     
-    with open('players.json', 'r') as file:
-        data = json.load(file)
+    leaderboard = get_leaderboard()
 
-    return render_template("dashboard.html", players=data, project_name=project_name)
+    return render_template("dashboard.html", players=leaderboard, project_name=project_name)
 
 
 
