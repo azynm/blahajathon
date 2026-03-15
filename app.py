@@ -145,7 +145,7 @@ def logout():
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
-    if 'access_token' not in session:
+    if 'discord_access_token' not in session or 'github_access_token' not in session:
         return redirect(url_for('index'))
 
     error_message = ""
