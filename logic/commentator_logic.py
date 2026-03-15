@@ -5,9 +5,9 @@ import requests
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import time
-from github_logic import get_detailed_github_data
-from discord_logic import fetch_all_messages, analyse_sentiment, read_storage, update_storage
-from scoring_logic import update_scores
+from logic.github_logic import get_detailed_github_data
+from logic.discord_logic import fetch_all_messages, analyse_sentiment, read_storage, update_storage
+from logic.scoring_logic import update_scores
 
 CACHE_DIR = "audio_cache"
 os.makedirs(CACHE_DIR, exist_ok=True)

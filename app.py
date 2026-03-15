@@ -1,25 +1,24 @@
 from flask import Flask, redirect, url_for, session, request, render_template, Response, jsonify
 import os
 from dotenv import load_dotenv
-from google import generativeai
 load_dotenv(override=True)
 
 import hashlib
 import requests
-from discord_logic import fetch_all_messages, create_storage_channel, get_repo_name
-from commentator_logic import collect_events
-from settings_logic import _is_allowed_image, _profile_context
-from github_logic import get_detailed_github_data
-from scoring_logic import get_leaderboard, get_scores_last_updated, set_display_name, resolve_player
+from logic.discord_logic import fetch_all_messages, create_storage_channel, get_repo_name
+from logic.commentator_logic import collect_events
+from logic.settings_logic import _is_allowed_image, _profile_context
+from logic.github_logic import get_detailed_github_data
+from logic.scoring_logic import get_leaderboard, get_scores_last_updated, set_display_name, resolve_player
 import json
 from pathlib import Path
 import uuid
-from commentator_logic import determine_style, generate_script, generate_audio_from_text
+from logic.commentator_logic import determine_style, generate_script, generate_audio_from_text
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import time
-import gunicorn
-import elevenlabs
+#import gunicorn
+#import elevenlabs
 
 #Setup constants
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
@@ -340,6 +339,9 @@ def leaderboard_api():
 
 #Actually starts web server
 if __name__ == "__main__":
+    '''
     import os
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
+    '''
+    app.run(debug=True, port=5000)
