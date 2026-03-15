@@ -170,6 +170,9 @@
         const cols = Math.ceil(window.innerWidth / totalSize) + 2;
         const rows = Math.ceil(window.innerHeight / totalSize) + 2;
         const tileData = [];
+        const activeTiles = new Set();
+        const flickeringTiles = new Set();
+
         for (let i = 0; i < rows * cols; i++) {
             const tile = document.createElement('div');
             tile.className = 'mosaic-tile';
@@ -177,6 +180,7 @@
             const row = Math.floor(i / cols);
             tileData.push({
                 el: tile,
+                idx: i,
                 x: col * totalSize + tileSize / 2 - 20,
                 y: row * totalSize + tileSize / 2 - 20,
                 col: col,
@@ -189,32 +193,63 @@
             mosaic.appendChild(tile);
         }
         mosaic.style.gridTemplateColumns = `repeat(${cols}, ${tileSize}px)`;
+
         let mouseX = -1000, mouseY = -1000, time = 0;
         const maxDistance = 80;
+
         document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+
+        const maxFlickeringTiles = 60;
         setInterval(() => {
-            const numFlickers = 1 + Math.floor(Math.random() * 3);
+            if (flickeringTiles.size >= maxFlickeringTiles) return;
+            const numFlickers = Math.min(2 + Math.floor(Math.random() * 3), maxFlickeringTiles - flickeringTiles.size);
             for (let i = 0; i < numFlickers; i++) {
                 const randomIndex = Math.floor(Math.random() * tileData.length);
                 tileData[randomIndex].flickerTarget = 0.4 + Math.random() * 0.4;
+                flickeringTiles.add(randomIndex);
             }
-        }, 400);
+        }, 300);
+
         function animate() {
             time += 0.05;
-            for (let i = 0; i < tileData.length; i++) {
+
+            const startCol = Math.max(0, Math.floor((mouseX - maxDistance - 20) / totalSize) - 1);
+            const endCol = Math.min(cols, Math.ceil((mouseX + maxDistance + 20) / totalSize) + 1);
+            const startRow = Math.max(0, Math.floor((mouseY - maxDistance - 20) / totalSize) - 1);
+            const endRow = Math.min(rows, Math.ceil((mouseY + maxDistance + 20) / totalSize) + 1);
+
+            const tilesToCheck = new Set();
+
+            for (let r = startRow; r < endRow; r++) {
+                for (let c = startCol; c < endCol; c++) {
+                    tilesToCheck.add(r * cols + c);
+                }
+            }
+
+            flickeringTiles.forEach(idx => tilesToCheck.add(idx));
+            activeTiles.forEach(idx => tilesToCheck.add(idx));
+
+            tilesToCheck.forEach(i => {
+                if (i < 0 || i >= tileData.length) return;
                 const t = tileData[i];
+
                 if (t.flicker < t.flickerTarget) {
                     t.flicker = Math.min(t.flickerTarget, t.flicker + t.flickerSpeed);
                 } else if (t.flicker > 0) {
                     t.flicker = Math.max(0, t.flicker - t.flickerSpeed * 0.5);
-                    if (t.flicker <= 0) t.flickerTarget = 0;
+                    if (t.flicker <= 0) {
+                        t.flickerTarget = 0;
+                        flickeringTiles.delete(i);
+                    }
                 }
+
                 const dx = mouseX - t.x, dy = mouseY - t.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const angle = Math.atan2(dy, dx);
                 const blobDistort = 1 + 0.15 * Math.sin(angle * 3 + time * 0.8) + 0.1 * Math.sin(angle * 5 - time * 1.2) + 0.08 * Math.sin(angle * 7 + time * 0.5);
                 const effectiveMaxDist = maxDistance * blobDistort;
                 const nearMouse = distance < effectiveMaxDist;
+
                 if (nearMouse || t.flicker > 0.01) {
                     const mouseInfluence = nearMouse ? 1 - distance / effectiveMaxDist : 0;
                     const wave = Math.sin(time + t.col * 0.2 + t.row * 0.15) * 0.2;
@@ -224,16 +259,21 @@
                     const saturation = 50 + combinedInfluence * 25;
                     const lightness = 60 + intensity * 20;
                     const alpha = Math.max(mouseInfluence * 0.9, t.flicker * 0.7);
+
                     t.el.style.backgroundColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
                     t.el.style.transform = nearMouse ? `scale(${1 + mouseInfluence * 0.12})` : '';
-                } else if (t.el.style.backgroundColor !== 'transparent') {
+                    activeTiles.add(i);
+                } else if (activeTiles.has(i)) {
                     t.el.style.backgroundColor = 'transparent';
                     t.el.style.transform = '';
+                    activeTiles.delete(i);
                 }
-            }
+            });
+
             requestAnimationFrame(animate);
         }
         animate();
+
         window.addEventListener('resize', () => { location.reload(); });
     })();
     </script>

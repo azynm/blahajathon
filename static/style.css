@@ -408,6 +408,7 @@ body {
     gap: 4px;
     z-index: 0;
     pointer-events: none;
+    contain: strict;
 }
 
 .mosaic-tile {

@@ -12,33 +12,11 @@
   <!-- Commit Tile Mosaic Background -->
   <div class="mosaic-container" id="mosaic"></div>
 
-  <!-- Single trunk line dropping from top-centre, with 3 commit nodes -->
   <svg class="branch-bg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMin slice" xmlns="http://www.w3.org/2000/svg">
     <line class="trunk-line" x1="720" y1="0" x2="720" y2="460"/>
   </svg>
 
   <div class="card">
-    <div class="card-icon">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- top-left node -->
-        <circle cx="5" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="5" cy="6" r="1" fill="currentColor"/>
-        <!-- top-right node -->
-        <circle cx="19" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="19" cy="6" r="1" fill="currentColor"/>
-        <!-- bottom-centre node -->
-        <circle cx="12" cy="20" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-        <circle cx="12" cy="20" r="1" fill="currentColor"/>
-        <!-- stem up from bottom node -->
-        <line x1="12" y1="17.5" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- horizontal crossbar -->
-        <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- left vertical up to top-left node -->
-        <line x1="5" y1="12" x2="5" y2="8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        <!-- right vertical up to top-right node -->
-        <line x1="19" y1="12" x2="19" y2="8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </div>
 
     <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
       <img src="{{ url_for('static', filename='CLeagueLogo.svg') }}" alt="CoLeague Logo" style="height: 5rem; width: 5rem;">
@@ -86,130 +64,128 @@
   </div>
 
   <script>
-    // Generate mosaic tiles
-    const mosaic = document.getElementById('mosaic');
-    const tileSize = 20;
-    const gap = 4;
-    const totalSize = tileSize + gap;
+    (function() {
+      const mosaic = document.getElementById('mosaic');
+      if (!mosaic) return;
+      const tileSize = 20;
+      const gap = 4;
+      const totalSize = tileSize + gap;
+      const cols = Math.ceil(window.innerWidth / totalSize) + 2;
+      const rows = Math.ceil(window.innerHeight / totalSize) + 2;
+      const tileData = [];
+      const activeTiles = new Set();
+      const flickeringTiles = new Set();
 
-    // Calculate how many tiles we need
-    const cols = Math.ceil(window.innerWidth / totalSize) + 2;
-    const rows = Math.ceil(window.innerHeight / totalSize) + 2;
-
-    // Store tile positions for fast lookup
-    const tileData = [];
-
-    // Create tiles
-    for (let i = 0; i < rows * cols; i++) {
-      const tile = document.createElement('div');
-      tile.className = 'mosaic-tile';
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      tileData.push({
-        el: tile,
-        x: col * totalSize + tileSize / 2 - 20,  // account for container offset
-        y: row * totalSize + tileSize / 2 - 20,
-        col: col,
-        row: row,
-        baseIntensity: Math.random() * 0.4,
-        flicker: 0,
-        flickerTarget: 0,
-        flickerSpeed: 0.02 + Math.random() * 0.03
-      });
-      mosaic.appendChild(tile);
-    }
-
-    // Set grid columns
-    mosaic.style.gridTemplateColumns = `repeat(${cols}, ${tileSize}px)`;
-
-    let mouseX = -1000;
-    let mouseY = -1000;
-    let time = 0;
-    const maxDistance = 80;
-
-    // Mouse tracking
-    document.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    });
-
-    // Random flicker trigger
-    setInterval(() => {
-      // Pick 1-3 random tiles to start flickering
-      const numFlickers = 1 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < numFlickers; i++) {
-        const randomIndex = Math.floor(Math.random() * tileData.length);
-        tileData[randomIndex].flickerTarget = 0.4 + Math.random() * 0.4;
+      for (let i = 0; i < rows * cols; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'mosaic-tile';
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        tileData.push({
+          el: tile,
+          idx: i,
+          x: col * totalSize + tileSize / 2 - 20,
+          y: row * totalSize + tileSize / 2 - 20,
+          col: col,
+          row: row,
+          baseIntensity: Math.random() * 0.4,
+          flicker: 0,
+          flickerTarget: 0,
+          flickerSpeed: 0.02 + Math.random() * 0.03
+        });
+        mosaic.appendChild(tile);
       }
-    }, 400);
+      mosaic.style.gridTemplateColumns = `repeat(${cols}, ${tileSize}px)`;
 
-    // Animation loop - optimized
-    function animate() {
-      time += 0.05;
+      let mouseX = -1000, mouseY = -1000, time = 0;
+      const maxDistance = 80;
 
-      // Calculate which tiles to check based on mouse position
-      const startCol = Math.max(0, Math.floor((mouseX - maxDistance) / totalSize) - 1);
-      const endCol = Math.min(cols, Math.ceil((mouseX + maxDistance) / totalSize) + 1);
-      const startRow = Math.max(0, Math.floor((mouseY - maxDistance) / totalSize) - 1);
-      const endRow = Math.min(rows, Math.ceil((mouseY + maxDistance) / totalSize) + 1);
+      document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
 
-      // Update all tiles
-      for (let i = 0; i < tileData.length; i++) {
-        const t = tileData[i];
+      const maxFlickeringTiles = 60;
+      setInterval(() => {
+        if (flickeringTiles.size >= maxFlickeringTiles) return;
+        const numFlickers = Math.min(2 + Math.floor(Math.random() * 3), maxFlickeringTiles - flickeringTiles.size);
+        for (let i = 0; i < numFlickers; i++) {
+          const randomIndex = Math.floor(Math.random() * tileData.length);
+          tileData[randomIndex].flickerTarget = 0.4 + Math.random() * 0.4;
+          flickeringTiles.add(randomIndex);
+        }
+      }, 300);
 
-        // Update flicker (slow fade in/out)
-        if (t.flicker < t.flickerTarget) {
-          t.flicker = Math.min(t.flickerTarget, t.flicker + t.flickerSpeed);
-        } else if (t.flicker > 0) {
-          t.flicker = Math.max(0, t.flicker - t.flickerSpeed * 0.5);
-          if (t.flicker <= 0) t.flickerTarget = 0;
+      function animate() {
+        time += 0.05;
+
+        // Only check tiles near the mouse
+        const startCol = Math.max(0, Math.floor((mouseX - maxDistance - 20) / totalSize) - 1);
+        const endCol = Math.min(cols, Math.ceil((mouseX + maxDistance + 20) / totalSize) + 1);
+        const startRow = Math.max(0, Math.floor((mouseY - maxDistance - 20) / totalSize) - 1);
+        const endRow = Math.min(rows, Math.ceil((mouseY + maxDistance + 20) / totalSize) + 1);
+
+        const tilesToCheck = new Set();
+
+        // Add tiles near mouse
+        for (let r = startRow; r < endRow; r++) {
+          for (let c = startCol; c < endCol; c++) {
+            tilesToCheck.add(r * cols + c);
+          }
         }
 
-        // Check if tile should show (near mouse OR flickering)
-        const dx = mouseX - t.x;
-        const dy = mouseY - t.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Add flickering tiles
+        flickeringTiles.forEach(idx => tilesToCheck.add(idx));
 
-        // Blob distortion - vary radius based on angle for organic shape
-        const angle = Math.atan2(dy, dx);
-        const blobDistort = 1 +
-          0.15 * Math.sin(angle * 3 + time * 0.8) +
-          0.1 * Math.sin(angle * 5 - time * 1.2) +
-          0.08 * Math.sin(angle * 7 + time * 0.5);
-        const effectiveMaxDist = maxDistance * blobDistort;
-        const nearMouse = distance < effectiveMaxDist;
+        // Add previously active tiles (to reset them)
+        activeTiles.forEach(idx => tilesToCheck.add(idx));
 
-        if (nearMouse || t.flicker > 0.01) {
-          const mouseInfluence = nearMouse ? 1 - distance / effectiveMaxDist : 0;
+        // Process only relevant tiles
+        tilesToCheck.forEach(i => {
+          if (i < 0 || i >= tileData.length) return;
+          const t = tileData[i];
 
-          // Wavering effect
-          const wave = Math.sin(time + t.col * 0.2 + t.row * 0.15) * 0.2;
-          const intensity = Math.min(1, t.baseIntensity + wave + mouseInfluence * 0.6 + t.flicker);
+          // Update flicker
+          if (t.flicker < t.flickerTarget) {
+            t.flicker = Math.min(t.flickerTarget, t.flicker + t.flickerSpeed);
+          } else if (t.flicker > 0) {
+            t.flicker = Math.max(0, t.flicker - t.flickerSpeed * 0.5);
+            if (t.flicker <= 0) {
+              t.flickerTarget = 0;
+              flickeringTiles.delete(i);
+            }
+          }
 
-          // Pink to blue gradient based on position
-          const hue = 330 - (t.col / cols) * 120;
-          const combinedInfluence = Math.max(mouseInfluence, t.flicker);
-          const saturation = 50 + combinedInfluence * 25;
-          const lightness = 60 + intensity * 20;
-          const alpha = Math.max(mouseInfluence * 0.9, t.flicker * 0.7);
+          const dx = mouseX - t.x, dy = mouseY - t.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx);
+          const blobDistort = 1 + 0.15 * Math.sin(angle * 3 + time * 0.8) + 0.1 * Math.sin(angle * 5 - time * 1.2) + 0.08 * Math.sin(angle * 7 + time * 0.5);
+          const effectiveMaxDist = maxDistance * blobDistort;
+          const nearMouse = distance < effectiveMaxDist;
 
-          t.el.style.backgroundColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
-          t.el.style.transform = nearMouse ? `scale(${1 + mouseInfluence * 0.12})` : '';
-        } else if (t.el.style.backgroundColor !== 'transparent') {
-          t.el.style.backgroundColor = 'transparent';
-          t.el.style.transform = '';
-        }
+          if (nearMouse || t.flicker > 0.01) {
+            const mouseInfluence = nearMouse ? 1 - distance / effectiveMaxDist : 0;
+            const wave = Math.sin(time + t.col * 0.2 + t.row * 0.15) * 0.2;
+            const intensity = Math.min(1, t.baseIntensity + wave + mouseInfluence * 0.6 + t.flicker);
+            const hue = 330 - (t.col / cols) * 120;
+            const combinedInfluence = Math.max(mouseInfluence, t.flicker);
+            const saturation = 50 + combinedInfluence * 25;
+            const lightness = 60 + intensity * 20;
+            const alpha = Math.max(mouseInfluence * 0.9, t.flicker * 0.7);
+
+            t.el.style.backgroundColor = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+            t.el.style.transform = nearMouse ? `scale(${1 + mouseInfluence * 0.12})` : '';
+            activeTiles.add(i);
+          } else if (activeTiles.has(i)) {
+            t.el.style.backgroundColor = 'transparent';
+            t.el.style.transform = '';
+            activeTiles.delete(i);
+          }
+        });
+
+        requestAnimationFrame(animate);
       }
+      animate();
 
-      requestAnimationFrame(animate);
-    }
-
-    animate();
-
-    // Handle resize
-    window.addEventListener('resize', () => {
-      location.reload();
-    });
+      window.addEventListener('resize', () => { location.reload(); });
+    })();
   </script>
 
 </body>
