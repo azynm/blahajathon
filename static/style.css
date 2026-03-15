@@ -398,6 +398,27 @@ body {
     background-size: 180px 180px;
 }
 
+/* ── Commit Tile Mosaic ── */
+.login-page .mosaic-container {
+    position: fixed;
+    top: -20px;
+    left: -20px;
+    right: -20px;
+    bottom: -20px;
+    display: grid;
+    gap: 4px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.login-page .mosaic-tile {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    background-color: transparent;
+    will-change: background-color, transform;
+}
+
 /* ── Branch SVG ── */
 .login-page .branch-bg {
     position: fixed;
