@@ -155,7 +155,10 @@ def get_repo_name(guild_id, discord_headers):
 
     #Filter for text channels and scrape messages
     channels = r.json()
-    config_channel = next((c for c in channels if c['name'] == 'bot-internal-config'), None)
+    config_channel = next(
+        (c for c in channels if c['name'] == 'bot-internal-config' and c['type'] == 0), 
+        None
+    )
 
     if config_channel:
         msg_resp = requests.get(f"https://discord.com/api/v10/channels/{config_channel['id']}/messages?limit=1", headers=discord_headers)
