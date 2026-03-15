@@ -199,12 +199,16 @@ def github_callback():
 #Dashboard page for each league/server
 @app.route('/dashboard/<dashboard_id>')
 def dashboard(dashboard_id):
+    # Redirect to login if not authenticated
+    if 'discord_access_token' not in session or 'github_access_token' not in session:
+        return redirect(url_for('index'))
+
     #Setup headers
     discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
     github_headers = {"Authorization": f"token {session['github_access_token']}"}
     now = datetime.now()
     last_time = now - timedelta(hours=3)
-    
+
     #Fetch all data
     github_data = get_detailed_github_data("azynm/blahajathon", github_headers, last_time)
     discord_data = fetch_all_messages(dashboard_id, discord_headers, last_time)
@@ -348,6 +352,33 @@ def commentary_latest(dashboard_id):
 
     latest = history[-1]
     return Response(latest["audio"], mimetype="audio/mpeg")
+
+
+@app.route('/api/github-repos')
+def github_repos():
+    """Fetch the user's GitHub repositories."""
+    if 'github_access_token' not in session:
+        return json.dumps({"error": "Not authenticated with GitHub"}), 401
+
+    github_headers = {"Authorization": f"token {session['github_access_token']}"}
+    response = requests.get(
+        "https://api.github.com/user/repos?per_page=100&sort=updated",
+        headers=github_headers
+    )
+
+    if response.status_code != 200:
+        return json.dumps({"error": "Failed to fetch repos"}), 500
+
+    repos = response.json()
+    # Return simplified repo data
+    return json.dumps([{
+        "id": repo["id"],
+        "name": repo["name"],
+        "full_name": repo["full_name"],
+        "private": repo["private"],
+        "description": repo.get("description", ""),
+        "url": repo["html_url"]
+    } for repo in repos])
 
 
 #Actually starts web server
