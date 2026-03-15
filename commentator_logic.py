@@ -286,9 +286,6 @@ def collect_events(dashboard_id, discord_headers, github_headers, repo_name):
                         "lines_changed": 100,
                     })
         update_scores(discord_messages, sentiment, github_data)
-        
-        print(read_storage(dashboard_id, discord_headers))
-        update_storage(dashboard_id, discord_headers, {"cool":"epic"})
 
         return events
     else:
