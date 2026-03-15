@@ -11,7 +11,46 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="text-slate-800 league-bg min-h-screen">
+<body class="text-slate-800 league-bg min-h-screen" x-data="{
+    showRepoModal: false,
+    showSettingsModal: false,
+    repos: [],
+    loadingRepos: false,
+    selectedOAuthUrl: '',
+    selectedServerName: '',
+    selectedRepo: '',
+    leagueDuration: '1week',
+    chaosMode: false,
+    async openRepoModal(oauthUrl, serverName) {
+        this.selectedOAuthUrl = oauthUrl;
+        this.selectedServerName = serverName;
+        this.showRepoModal = true;
+        this.loadingRepos = true;
+        try {
+            const response = await fetch('/api/github-repos');
+            if (response.ok) {
+                this.repos = await response.json();
+            }
+        } catch (e) {
+            console.error('Failed to fetch repos:', e);
+        }
+        this.loadingRepos = false;
+    },
+    selectRepo(repoFullName) {
+        this.selectedRepo = repoFullName;
+        this.showRepoModal = false;
+        this.showSettingsModal = true;
+    },
+    beginLeague() {
+        const url = new URL(this.selectedOAuthUrl);
+        url.searchParams.set('state', JSON.stringify({
+            repo: this.selectedRepo,
+            duration: this.leagueDuration,
+            chaos: this.chaosMode
+        }));
+        window.location.href = url.toString();
+    }
+}">
     <div class="mx-auto max-w-5xl px-4 pb-8 pt-5 sm:px-6 lg:px-8 fade-in">
 
         <!-- Top Nav Bar -->
@@ -131,9 +170,193 @@
     <script>
         function addBotToServer(select) {
             if (select.value) {
-                window.location.href = select.value;
+                const serverName = select.options[select.selectedIndex].text;
+                Alpine.$data(document.body).openRepoModal(select.value, serverName);
+                select.value = ''; // Reset dropdown
             }
         }
     </script>
+
+    <!-- Repo Selection Modal -->
+    <div
+        x-cloak
+        x-show="showRepoModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @keydown.escape.window="showRepoModal = false"
+    >
+        <!-- Backdrop -->
+        <div
+            class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            @click="showRepoModal = false"
+        ></div>
+
+        <!-- Modal Content -->
+        <div
+            class="glass relative z-10 w-full max-w-lg rounded-2xl p-6 shadow-2xl"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+        >
+            <div class="mb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Select a Repository</h2>
+                    <p class="text-sm text-slate-600">for <span class="font-semibold" x-text="selectedServerName"></span></p>
+                </div>
+                <button
+                    @click="showRepoModal = false"
+                    class="rounded-lg p-2 text-slate-500 hover:bg-white/50 hover:text-slate-700 transition"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div x-show="loadingRepos" class="py-8 text-center">
+                <svg class="mx-auto h-8 w-8 animate-spin text-violet-600" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="mt-2 text-sm text-slate-600">Loading repositories...</p>
+            </div>
+
+            <!-- Repo List -->
+            <div x-show="!loadingRepos" class="max-h-80 overflow-y-auto space-y-2">
+                <template x-for="repo in repos" :key="repo.id">
+                    <button
+                        @click="selectRepo(repo.full_name)"
+                        class="flex w-full items-start gap-3 rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-left transition hover:bg-white/80 hover:border-violet-200"
+                    >
+                        <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-slate-800 truncate" x-text="repo.full_name"></p>
+                            <p class="text-xs text-slate-500 truncate" x-text="repo.description || 'No description'"></p>
+                        </div>
+                        <span
+                            x-show="repo.private"
+                            class="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700"
+                        >Private</span>
+                    </button>
+                </template>
+
+                <div x-show="repos.length === 0" class="py-6 text-center text-sm text-slate-500">
+                    No repositories found.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- League Settings Modal -->
+    <div
+        x-cloak
+        x-show="showSettingsModal"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @keydown.escape.window="showSettingsModal = false"
+    >
+        <!-- Backdrop -->
+        <div
+            class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            @click="showSettingsModal = false"
+        ></div>
+
+        <!-- Modal Content -->
+        <div
+            class="glass relative z-10 w-full max-w-md rounded-2xl p-6 shadow-2xl"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+        >
+            <div class="mb-5 flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">League Settings</h2>
+                    <p class="text-sm text-slate-600">for <span class="font-semibold" x-text="selectedServerName"></span></p>
+                </div>
+                <button
+                    @click="showSettingsModal = false"
+                    class="rounded-lg p-2 text-slate-500 hover:bg-white/50 hover:text-slate-700 transition"
+                >
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Selected Repo Display -->
+            <div class="mb-5 rounded-xl border border-white/60 bg-white/50 px-4 py-3">
+                <p class="text-xs text-slate-500 mb-1">Selected Repository</p>
+                <p class="font-medium text-slate-800" x-text="selectedRepo"></p>
+            </div>
+
+            <!-- Duration Dropdown -->
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-slate-700 mb-2">League Duration</label>
+                <select
+                    x-model="leagueDuration"
+                    class="w-full rounded-xl border border-white/60 bg-white/50 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-white/80 focus:outline-none focus:ring-2 focus:ring-violet-300 cursor-pointer appearance-none"
+                    style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2364748b%27 stroke-width=%272%27%3E%3Cpath d=%27m6 9 6 6 6-6%27/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 40px;"
+                >
+                    <option value="1day">1 Day</option>
+                    <option value="3days">3 Days</option>
+                    <option value="1week">1 Week</option>
+                    <option value="2weeks">2 Weeks</option>
+                    <option value="1month">1 Month</option>
+                    <option value="3months">3 Months</option>
+                    <option value="6months">6 Months</option>
+                    <option value="1year">1 Year</option>
+                    <option value="2years">2 Years</option>
+                    <option value="5years">5 Years</option>
+                    <option value="ongoing">Ongoing (No End)</option>
+                </select>
+            </div>
+
+            <!-- Chaos Mode Toggle -->
+            <div class="mb-6 flex items-center justify-between rounded-xl border border-white/60 bg-white/50 px-4 py-3 transition hover:bg-white/80 hover:border-violet-200">
+                <div>
+                    <p class="font-medium text-slate-800">Leaderboard Chaos</p>
+                    <p class="text-xs text-slate-500">Randomize point multipliers & surprise events</p>
+                </div>
+                <button
+                    type="button"
+                    @click="chaosMode = !chaosMode"
+                    :class="chaosMode ? 'bg-violet-500' : 'bg-slate-300'"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
+                >
+                    <span
+                        :class="chaosMode ? 'translate-x-5' : 'translate-x-0'"
+                        class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                    ></span>
+                </button>
+            </div>
+
+            <!-- Begin League Button -->
+            <button
+                @click="beginLeague()"
+                class="w-full rounded-xl bg-gradient-to-r from-violet-500 to-sky-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-200/50 transition hover:from-violet-600 hover:to-sky-600 hover:shadow-xl"
+            >
+                <svg class="inline-block h-5 w-5 mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Begin League
+            </button>
+
+            <!-- Back Button -->
+            <button
+                @click="showSettingsModal = false; showRepoModal = true"
+                class="mt-3 w-full rounded-xl border border-white/60 bg-white/50 px-6 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-white/80"
+            >
+                ← Back to Repository Selection
+            </button>
+        </div>
+    </div>
 </body>
 </html>
