@@ -5,6 +5,7 @@ load_dotenv(override=True)
 
 import hashlib
 import requests
+from discord_logic import fetch_all_messages
 from commentator_logic import collect_events
 from settings_logic import _is_allowed_image, _profile_context
 from github_logic import get_detailed_github_data
@@ -36,8 +37,6 @@ app.config['UPLOAD_FOLDER'] = str(Path("static") / "uploads")
 # Global state for commentary caching
 commentary_history = {}  # {dashboard_id: [list of commentary entries]}
 last_generated = {}      # {dashboard_id: timestamp of last generation}
-_guild_name_cache = {}   # {guild_id: name}
-_bot_servers_cache = {"data": None, "time": 0}  # cache bot server list
 #Home screen
 @app.route('/')
 def index():
@@ -50,16 +49,11 @@ def index():
     if 'github_access_token' not in session:
         return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
 
-    #Get all the servers the bot is in (cached for 5 minutes)
-    now = time.time()
-    if _bot_servers_cache["data"] is None or now - _bot_servers_cache["time"] > 300:
-        bot_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"}).json()
-        if isinstance(bot_servers, list):
-            _bot_servers_cache["data"] = bot_servers
-            _bot_servers_cache["time"] = now
-        else:
-            return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
-    bot_servers = _bot_servers_cache["data"]
+    #Get all the servers the bot is in
+    bot_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"}).json()
+    if not isinstance(bot_servers, list):
+        # Bot token error - clear session and re-login
+        return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
     bot_server_ids = set([g["id"] for g in bot_servers])
 
     #Get all the servers the user is in
@@ -121,23 +115,28 @@ def dashboard(dashboard_id):
     if 'discord_access_token' not in session or 'github_access_token' not in session:
         return redirect(url_for('index'))
 
-    # Setup headers
+    #Setup headers
     discord_headers = {"Authorization": f"Bot {BOT_TOKEN}"}
+    github_headers = {"Authorization": f"token {session['github_access_token']}"}
+    now = datetime.now()
+    last_time = now - timedelta(hours=3)
 
-    project_name = _guild_name_cache.get(dashboard_id)
-    if not project_name:
-        try:
-            guild_resp = requests.get(
-                f"https://discord.com/api/guilds/{dashboard_id}",
-                headers=discord_headers,
-                timeout=10,
-            )
-            if guild_resp.ok:
-                guild_data = guild_resp.json()
-                project_name = guild_data.get("name", dashboard_id)
-                _guild_name_cache[dashboard_id] = project_name
-        except requests.RequestException:
-            project_name = dashboard_id
+    #Fetch all data
+    github_data = get_detailed_github_data("azynm/blahajathon", github_headers, last_time)
+    discord_data = fetch_all_messages(dashboard_id, discord_headers, last_time)
+
+    project_name = dashboard_id
+    try:
+        guild_resp = requests.get(
+            f"https://discord.com/api/guilds/{dashboard_id}",
+            headers=discord_headers,
+            timeout=10,
+        )
+        if guild_resp.ok:
+            guild_data = guild_resp.json()
+            project_name = guild_data.get("name", dashboard_id)
+    except requests.RequestException:
+        project_name = dashboard_id
     
     leaderboard = get_leaderboard()
     last_updated = get_scores_last_updated()
@@ -257,7 +256,7 @@ def commentary_history_api(dashboard_id):
 
     history = commentary_history.get(dashboard_id, [])
     # Return without audio bytes
-    return jsonify([{
+    return json.dumps([{
         "id": e["id"],
         "timestamp": e["timestamp"],
         "style": e["style"],
@@ -282,7 +281,7 @@ def commentary_audio(dashboard_id, entry_id):
 def github_repos():
     """Fetch the user's GitHub repositories."""
     if 'github_access_token' not in session:
-        return jsonify({"error": "Not authenticated with GitHub"}), 401
+        return json.dumps({"error": "Not authenticated with GitHub"}), 401
 
     github_headers = {"Authorization": f"token {session['github_access_token']}"}
     response = requests.get(
@@ -291,11 +290,11 @@ def github_repos():
     )
 
     if response.status_code != 200:
-        return jsonify({"error": "Failed to fetch repos"}), 500
+        return json.dumps({"error": "Failed to fetch repos"}), 500
 
     repos = response.json()
     # Return simplified repo data
-    return jsonify([{
+    return json.dumps([{
         "id": repo["id"],
         "name": repo["name"],
         "full_name": repo["full_name"],
