@@ -88,9 +88,9 @@
     "Sophia": {
       "discord_id": "soupdewoop",
       "github_id": "sophacode",
-      "overall": 1153,
+      "overall": 1179,
       "discord_score": 663,
-      "git_score": 490,
+      "git_score": 516,
       "recent_record": [
         "bad",
         "bad",
@@ -102,7 +102,7 @@
         "messages_sent": 0,
         "positive_mentions": 2,
         "negative_mentions": 1,
-        "commits": 90,
+        "commits": 93,
         "merges": 0,
         "merge_conflicts": 0,
         "main_commits": 0,
@@ -111,7 +111,7 @@
         "spam_penalty": 0,
         "reply_bonus": 300,
         "new_branches": 1,
-        "prs_merged": 30,
+        "prs_merged": 34,
         "good_merges": 30
       }
     }
@@ -121,5 +121,5 @@
     "commentatorfix": "Zayn",
     "improve-commentary": "Zayn"
   },
-  "last_updated": "2026-03-15T03:06:27.918093"
+  "last_updated": "2026-03-15T04:25:16.362933"
 }

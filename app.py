@@ -9,7 +9,7 @@ from discord_logic import fetch_all_messages
 from commentator_logic import collect_events
 from settings_logic import _is_allowed_image, _profile_context
 from github_logic import get_detailed_github_data
-from scoring_logic import get_leaderboard, set_display_name, resolve_player
+from scoring_logic import get_leaderboard, get_scores_last_updated, set_display_name, resolve_player
 import json
 from pathlib import Path
 import uuid
@@ -132,8 +132,15 @@ def dashboard(dashboard_id):
         project_name = dashboard_id
     
     leaderboard = get_leaderboard()
+    last_updated = get_scores_last_updated()
 
-    return render_template("dashboard.html", players=leaderboard, project_name=project_name, autoplay_commentary=session.get('autoplay_commentary', False))
+    return render_template(
+        "dashboard.html",
+        players=leaderboard,
+        project_name=project_name,
+        autoplay_commentary=session.get('autoplay_commentary', False),
+        last_updated=last_updated,
+    )
 
 #Logout page
 @app.route('/logout')
@@ -294,7 +301,10 @@ def github_repos():
 def leaderboard_api():
     """Return the current leaderboard with scores."""
     leaderboard = get_leaderboard()
-    return jsonify(leaderboard)
+    return jsonify({
+        "players": leaderboard,
+        "last_updated": get_scores_last_updated(),
+    })
 
 
 #Actually starts web server

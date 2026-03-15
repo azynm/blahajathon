@@ -21,6 +21,7 @@
             selectedPlayer: null,
             splitView: false,
             players: [],
+            lastUpdated: '{{ dashboard_last_updated }}',
             commentaryHistory: [],
             currentlyPlaying: null,
             isPlaying: false,
@@ -51,7 +52,12 @@
                 try {
                     const response = await fetch('/api/leaderboard');
                     if (response.ok) {
-                        this.players = await response.json();
+                        const payload = await response.json();
+                        if (Array.isArray(payload)) {
+                            this.players = payload;
+                        } else {
+                            this.players = payload.players || [];
+                        }
                     }
                 } catch (e) {
                     console.error('Leaderboard fetch failed:', e);
@@ -84,6 +90,9 @@
                         const newHistory = await response.json();
                         const latestNew = newHistory.length > 0 ? newHistory[newHistory.length - 1] : null;
                         this.commentaryHistory = newHistory;
+                        if (latestNew && latestNew.timestamp) {
+                            this.lastUpdated = new Date(latestNew.timestamp * 1000).toLocaleString();
+                        }
                         // Autoplay if enabled and there's a new entry we haven't seen
                         if (this.autoplay && latestNew && latestNew.id !== this.lastSeenEntryId) {
                             this.lastSeenEntryId = latestNew.id;
@@ -120,7 +129,7 @@
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold tracking-tight text-slate-900">CoLeague - {{ project_name if project_name is defined else 'Project' }}</h1>
-                    <p class="mt-1 text-sm text-slate-600" style="font-family: 'JetBrains Mono', monospace;">// last updated: <span style="font-weight: 600;">{{ dashboard_last_updated }}</span></p>
+                    <p class="mt-1 text-sm text-slate-600" style="font-family: 'JetBrains Mono', monospace;">// last updated: <span style="font-weight: 600;" x-text="lastUpdated">{{ dashboard_last_updated }}</span></p>
                 </div>
 
                 <div class="menu-anchor" x-data="{ open: false }">

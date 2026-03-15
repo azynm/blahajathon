@@ -414,3 +414,17 @@ def get_leaderboard():
     for i, player in enumerate(sorted_board):
         player["rank"] = i + 1
     return sorted_board
+
+
+def get_scores_last_updated():
+    """Return a human-friendly timestamp for when scores were last persisted."""
+    data = load_scores()
+    raw = data.get("last_updated")
+    if not raw:
+        return "Not updated yet"
+
+    try:
+        dt = datetime.fromisoformat(raw)
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return raw
