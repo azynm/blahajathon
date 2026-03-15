@@ -211,3 +211,7 @@ __marimo__/
 # Audio outputs and caches
 audio_cache/
 outputs/
+
+# Data files
+scores.json
+scores.json
