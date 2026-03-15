@@ -7,6 +7,7 @@ import hashlib
 import requests
 from discord_logic import fetch_all_messages, analyse_sentiment
 from commentator.commentator import generate_commentary_audio
+from settings_logic import _is_allowed_image, _profile_context
 from github_logic import get_detailed_github_data
 import json
 from pathlib import Path
@@ -30,9 +31,7 @@ GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_C
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = "bum2"
-
 app.config['UPLOAD_FOLDER'] = str(Path("static") / "uploads")
-ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 # Global state for commentary caching
 commentary_history = {}  # {dashboard_id: [list of commentary entries]}
@@ -111,22 +110,6 @@ def collect_discord_events(dashboard_id, github_token=None):
 
     return events, msg_hash
 
-
-def _is_allowed_image(filename: str) -> bool:
-    if not filename or "." not in filename:
-        return False
-    ext = filename.rsplit(".", 1)[1].lower()
-    return ext in ALLOWED_IMAGE_EXTENSIONS
-
-
-def _profile_context() -> dict[str, str]:
-    username = session.get('username', 'Guest User')
-    return {
-        "name": session.get('profile_name', username),
-        "role": session.get('profile_role', 'Player'),
-        "avatar": session.get('profile_picture', ''),
-    }
-
 #Home screen
 @app.route('/')
 def index():
@@ -158,8 +141,6 @@ def index():
     #Show the page
     return render_template("index.html", guilds=servers, username=session['username'], client_id=DISCORD_CLIENT_ID, redirect_uri=REDIRECT_URI) 
 
-
-
 #Discord callback page
 @app.route('/discord_callback')
 def discord_callback(): 
@@ -179,8 +160,7 @@ def discord_callback():
     
     return redirect(url_for('index'))
 
-
-
+#Github callback page
 @app.route('/github_callback')
 def github_callback(): 
     #Get code from Github callback for handshake
@@ -193,8 +173,6 @@ def github_callback():
     session['github_access_token'] = r.get('access_token')
     
     return redirect(url_for('index'))
-
-
 
 #Dashboard page for each league/server
 @app.route('/dashboard/<dashboard_id>')
@@ -219,8 +197,6 @@ def dashboard(dashboard_id):
         data = json.load(file)
 
     return render_template("dashboard.html", players=data)
-
-
 
 #Logout page
 @app.route('/logout')
@@ -263,12 +239,12 @@ def settings():
     saved = request.args.get('saved') == '1'
     return render_template(
         'settings.html',
-        current_user=_profile_context(),
+        current_user=_profile_context(session),
         saved=saved,
         error_message=error_message,
     )
 
-
+#Endpoint for commentator
 @app.route('/api/commentary-history/<dashboard_id>')
 def commentary_history_api(dashboard_id):
     """Return list of recent commentary entries (without audio bytes)."""
@@ -317,7 +293,7 @@ def commentary_history_api(dashboard_id):
         "script": e["script"]
     } for e in history])
 
-
+#Endpoint for audio playback
 @app.route('/api/commentary/<dashboard_id>/<entry_id>')
 def commentary_audio(dashboard_id, entry_id):
     """Serve audio for a specific commentary entry."""
@@ -329,18 +305,7 @@ def commentary_audio(dashboard_id, entry_id):
 
     return Response(entry["audio"], mimetype="audio/mpeg")
 
-
-@app.route('/api/commentary/<dashboard_id>')
-def commentary_latest(dashboard_id):
-    """Legacy endpoint - redirects to latest entry."""
-    history = commentary_history.get(dashboard_id, [])
-    if not history:
-        return "", 204
-
-    latest = history[-1]
-    return Response(latest["audio"], mimetype="audio/mpeg")
-
-
+#Endpoint to fetch repos
 @app.route('/api/github-repos')
 def github_repos():
     """Fetch the user's GitHub repositories."""
@@ -366,7 +331,6 @@ def github_repos():
         "description": repo.get("description", ""),
         "url": repo["html_url"]
     } for repo in repos])
-
 
 #Actually starts web server
 if __name__ == '__main__':
