@@ -3,9 +3,9 @@
     "Zayn": {
       "discord_id": "azynm",
       "github_id": "azynm",
-      "overall": 647,
-      "discord_score": 347,
-      "git_score": 300,
+      "overall": 917,
+      "discord_score": 519,
+      "git_score": 398,
       "recent_record": [
         "bad",
         "bad",
@@ -16,25 +16,25 @@
       "stats": {
         "messages_sent": 0,
         "positive_mentions": 2,
-        "negative_mentions": 12,
-        "commits": 40,
+        "negative_mentions": 14,
+        "commits": 54,
         "merges": 0,
         "merge_conflicts": 0,
         "main_commits": 0,
         "branches_used": [],
-        "messages": 233,
+        "messages": 359,
         "spam_penalty": 0,
-        "reply_bonus": 200,
+        "reply_bonus": 270,
         "new_branches": 2,
-        "prs_merged": 40
+        "prs_merged": 54
       }
     },
     "Lacksha": {
       "discord_id": "lacksha.",
       "github_id": "lackshaj",
-      "overall": 852,
-      "discord_score": 392,
-      "git_score": 460,
+      "overall": 1099,
+      "discord_score": 532,
+      "git_score": 567,
       "recent_record": [
         "bad",
         "bad",
@@ -46,23 +46,23 @@
         "messages_sent": 0,
         "positive_mentions": 0,
         "negative_mentions": 1,
-        "commits": 80,
+        "commits": 101,
         "merges": 0,
         "merge_conflicts": 0,
         "main_commits": 0,
         "branches_used": [],
-        "messages": 200,
+        "messages": 270,
         "spam_penalty": 0,
-        "reply_bonus": 200,
-        "good_merges": 60
+        "reply_bonus": 270,
+        "good_merges": 73
       }
     },
     "Aadi": {
       "discord_id": "aadideepchand20",
       "github_id": "Aadi Deepchand",
-      "overall": 832,
-      "discord_score": 752,
-      "git_score": 80,
+      "overall": 1112,
+      "discord_score": 1010,
+      "git_score": 102,
       "recent_record": [
         "bad",
         "bad",
@@ -73,23 +73,23 @@
       "stats": {
         "messages_sent": 0,
         "positive_mentions": 0,
-        "negative_mentions": 1,
-        "commits": 40,
+        "negative_mentions": 2,
+        "commits": 51,
         "merges": 0,
         "merge_conflicts": 0,
         "main_commits": 0,
         "branches_used": [],
-        "messages": 560,
+        "messages": 756,
         "spam_penalty": 0,
-        "reply_bonus": 200
+        "reply_bonus": 270
       }
     },
     "Sophia": {
       "discord_id": "soupdewoop",
       "github_id": "sophacode",
-      "overall": 772,
-      "discord_score": 442,
-      "git_score": 330,
+      "overall": 1038,
+      "discord_score": 596,
+      "git_score": 442,
       "recent_record": [
         "bad",
         "bad",
@@ -99,17 +99,17 @@
         "messages_sent": 0,
         "positive_mentions": 2,
         "negative_mentions": 1,
-        "commits": 60,
+        "commits": 81,
         "merges": 0,
         "merge_conflicts": 0,
         "main_commits": 0,
         "branches_used": [],
-        "messages": 240,
+        "messages": 324,
         "spam_penalty": 0,
-        "reply_bonus": 200,
+        "reply_bonus": 270,
         "new_branches": 1,
-        "prs_merged": 20,
-        "good_merges": 20
+        "prs_merged": 27,
+        "good_merges": 27
       }
     }
   },
@@ -118,5 +118,5 @@
     "commentatorfix": "Zayn",
     "improve-commentary": "Zayn"
   },
-  "last_updated": "2026-03-15T02:23:40.915482"
+  "last_updated": "2026-03-15T02:28:39.708514"
 }

@@ -13,6 +13,19 @@ load_dotenv(override=True)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
+# Username to display name mapping for commentary
+USERNAME_MAP = {
+    "azynm": "Zayn",
+    "zayn": "Zayn",
+    "lackshaj": "Lacksha",
+    "lacksha.": "Lacksha",
+    "aadideepchand20": "Aadi",
+    "aadi deepchand": "Aadi",
+    "sophacode": "Sophia",
+    "soph.advinc": "Sophia",
+    "soupdewoop": "Sophia",
+}
+
 # Pre-defined styles mapping a descriptor to a specific ElevenLabs voice ID
 # Adam (pNInz6obpgDQGcFmaJgB) gives a deep, dramatic play-by-play feel (Tyler)
 # Brian (nPczCjzI2devNBz1zQrb) is often used for dramatic, poetic storytelling (Drury)
@@ -84,20 +97,36 @@ def generate_script(events: dict, style: str = "calm") -> str:
             cleaned = cleaned.replace("kill myself", "[made concerning statements]")
             cleaned = cleaned.replace("PAKI", "[used slurs against]")
             cleaned = cleaned.replace("death threats", "serious insults")
+            # Replace raw usernames with display names
+            for username, display_name in USERNAME_MAP.items():
+                cleaned = cleaned.replace(username, display_name)
             sanitized.append(cleaned)
         highlights_text = "\n\nNOTABLE MOMENTS (describe dramatically but keep it broadcast-safe):\n" + "\n".join(f"- {h}" for h in sanitized)
+
+    # Build commit info with real names
+    commits = events.get("recent_commits", [])
+    commit_lines = []
+    for c in commits:
+        author = USERNAME_MAP.get(c.get("author", ""), c.get("author", "unknown"))
+        commit_lines.append(f"{author}: {c.get('message', '')}")
+    commits_text = ""
+    if commit_lines:
+        commits_text = "\n\nRECENT COMMITS:\n" + "\n".join(f"- {line}" for line in commit_lines[:5])
+
+    # Team roster for Gemini to use
+    team_text = "\n\nTEAM MEMBERS: Zayn, Lacksha, Aadi, Sophia. Use ONLY these names."
 
     prompt = f"""You are an energetic, dramatic football commentator for a software development team's league table.
 
 CURRENT SITUATION:
 - Discord mood: {events.get('discord_sentiment', 'neutral')}
 - Recent commits: {len(events.get('recent_commits', []))}
-- PRs merged: {events.get('pull_requests_merged', 0)}{highlights_text}
+- PRs merged: {events.get('pull_requests_merged', 0)}{highlights_text}{commits_text}{team_text}
 
 COMMENTARY STYLE: {STYLE_MAPPING.get(style, STYLE_MAPPING["calm"])["description"]}
 
 CRITICAL RULES:
-1. Mention people BY NAME and describe the drama in broadcast-safe football terms
+1. Mention people BY NAME using ONLY the names from TEAM MEMBERS above. Do NOT invent names.
 2. Use mannerisms of football commentators but in places where they would say football terms, use appropriate discord/git terminology
 3. Match the energy to the style - calm is measured, poetic is flowery, super_angry is EXPLOSIVE
 

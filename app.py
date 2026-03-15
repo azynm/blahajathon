@@ -313,6 +313,16 @@ def commentary_history_api(dashboard_id):
                 timestamp = time.time()
                 entry_id = hashlib.md5(f"{dashboard_id}_{timestamp}".encode()).hexdigest()[:12]
 
+                # Build event log bullets
+                event_log = []
+                for h in events.get("discord_highlights", []):
+                    event_log.append(h)
+                for c in events.get("recent_commits", []):
+                    event_log.append(f"{c['author']} committed: {c['message']}")
+                pr_count = events.get("pull_requests_merged", 0)
+                if pr_count:
+                    event_log.append(f"{pr_count} pull request(s) merged")
+
                 if dashboard_id not in commentary_history:
                     commentary_history[dashboard_id] = []
 
@@ -321,7 +331,8 @@ def commentary_history_api(dashboard_id):
                     "timestamp": timestamp,
                     "style": style,
                     "script": script,
-                    "audio": audio
+                    "audio": audio,
+                    "event_log": event_log
                 })
                 commentary_history[dashboard_id] = commentary_history[dashboard_id][-10:]
                 last_generated[dashboard_id] = timestamp
@@ -336,7 +347,8 @@ def commentary_history_api(dashboard_id):
         "id": e["id"],
         "timestamp": e["timestamp"],
         "style": e["style"],
-        "script": e["script"]
+        "script": e["script"],
+        "event_log": e.get("event_log", [])
     } for e in history])
 
 
