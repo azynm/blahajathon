@@ -1,5 +1,9 @@
 import os
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
 import time
+import json
 import requests
 from datetime import datetime, timedelta
 
@@ -13,7 +17,7 @@ def fetch_all_messages(dashboard_id, headers, last_time):
 
     #Filter for text channels and scrape messages
     channels = r.json()
-    text_channels = [c for c in channels if c['type'] == 0]
+    text_channels = [c for c in channels if c['type'] == 0 and c.get('name', '').lower() != 'keys']
     out = []
     for c in text_channels:
         out.extend(fetch_latest_messages(c['id'], headers, last_time))
@@ -63,21 +67,33 @@ def datetime_to_snowflake(dt_obj):
 
 def analyse_sentiment(messages):
     """
-    Send a batch of Discord messages to Gemini and get an overall sentiment label.
-    Returns one of: "positive", "neutral", "negative", "toxic", "highly toxic"
+    Send a batch of Discord messages to Gemini and get detailed sentiment analysis.
+    Returns a dict with:
+      - overall: one of "positive", "neutral", "negative", "toxic", "highly toxic"
+      - highlights: list of notable moments with person names and what they did
     """
     if not messages:
-        return "neutral"
+        return {"overall": "neutral", "highlights": []}
 
     conversation = "\n".join(f"{m['author']}: {m['content']}" for m in messages)
 
-    prompt = f"""Classify the overall sentiment of these Discord messages into exactly one of these labels:
-positive, neutral, negative, toxic, highly toxic
+    prompt = f"""Analyze these Discord messages from a software development team.
 
 Messages:
 {conversation}
 
-Respond with ONLY the label, nothing else."""
+Respond in this EXACT JSON format (no markdown, no code blocks):
+{{"overall": "LABEL", "highlights": ["highlight1", "highlight2"]}}
+
+Where:
+- LABEL is exactly one of: positive, neutral, negative, toxic, highly toxic
+- highlights is a list of 1-3 notable moments that a sports commentator would call out. Be SPECIFIC about WHO did what. Examples:
+  - "Dave insulted Mike's code review skills"
+  - "Sarah encouraged the team after a bug was found"
+  - "Tom went on an angry rant about merge conflicts"
+  - "Everyone is being supportive and productive"
+
+If nothing notable happened, use an empty list for highlights."""
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
@@ -89,21 +105,31 @@ Respond with ONLY the label, nothing else."""
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
-            label = data["candidates"][0]["content"]["parts"][0]["text"].strip().lower()
+            text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+            # Strip markdown code blocks if present
+            if text.startswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+            result = json.loads(text)
+
             valid = {"positive", "neutral", "negative", "toxic", "highly toxic"}
-            if label in valid:
-                return label
-            print(f"Gemini returned unexpected sentiment label: {label!r}, defaulting to neutral")
-            return "neutral"
+            overall = result.get("overall", "neutral").lower()
+            if overall not in valid:
+                overall = "neutral"
+
+            return {
+                "overall": overall,
+                "highlights": result.get("highlights", [])
+            }
         except requests.exceptions.HTTPError:
             if response.status_code == 429:
                 wait_time = 5 * (2 ** attempt)
                 print(f"Sentiment rate limited (429). Retrying in {wait_time}s (Attempt {attempt+1}/{max_retries})...")
                 time.sleep(wait_time)
             else:
-                print(f"Sentiment analysis failed: {response.status_code}")
+                print(f"Sentiment analysis failed: {response.status_code} - {response.text[:500]}")
                 break
         except Exception as e:
             print(f"Sentiment analysis failed: {e}")
             break
-    return "neutral"
+    return {"overall": "neutral", "highlights": []}

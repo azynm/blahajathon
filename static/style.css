@@ -552,6 +552,23 @@ body {
     transform: translateY(0);
 }
 
+.login-page .btn-github {
+    background: linear-gradient(90deg, #8dc7a3, #7eb5f4);
+    color: #0f172a;
+    border: 1px solid rgba(255,255,255,0.8);
+    box-shadow: 0 8px 20px rgba(34, 197, 94, 0.18);
+}
+
+.login-page .btn-github:hover {
+    background: linear-gradient(90deg, #409f63, #549ef1);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 26px rgba(34, 197, 94, 0.25);
+}
+
+.login-page .btn-github:active {
+    transform: translateY(0);
+}
+
 .login-page .step-badge {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.7rem;

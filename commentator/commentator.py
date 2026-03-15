@@ -71,51 +71,28 @@ def generate_script(events: dict, style: str = "calm") -> str:
     """
     Takes an event dictionary and generates an e-sports style commentary script using Gemini.
     """
-    prompt = f"""
-        You are an energetic, dramatic, and humorous football-esque commentator for a software development group project.
-        There is a 'league table' for the workplace where a point system is based off various git and discord related metrics,
-        including:
-            - Commits
-            - Review/approval of merges
-                - was the review positive or negative? and did they let a buggy branch get merged?
-            - Positive Messages
-                - Kind manners, encouragement, general positive vibes
-            - Negative Messages
-                - Insults, harassment, general negative vibes
-            - Inactivity/Activity
-                - How active they are in the discord server
-            - Response Times
-                - How quickly they respond to messages
-            - Spam
-                - How much they spam in the discord server - avoids statpadding by penalising it
-            - Commit Name
-                - How explanatory and concise commit names are - do you know what the commit does just from the name?
-            - Branch Usage
-                - How often they use branches
-                - penalise working on main
+    # Build highlights section if available
+    highlights = events.get("discord_highlights", [])
+    highlights_text = ""
+    if highlights:
+        highlights_text = "\n\nNOTABLE MOMENTS TO COMMENTATE ON:\n" + "\n".join(f"- {h}" for h in highlights)
 
-                
+    prompt = f"""You are an energetic, dramatic football commentator for a software development team's league table.
 
-    
-    {events}
-    
-    Your job is to generate a commentary line based on the event(s) that took place matching this specific commentary style:
-    {STYLE_MAPPING.get(style, STYLE_MAPPING["calm"])["description"]}
-    
-    Focus on the action that occurs and the impact it might have on the league table. Important things are:
+CURRENT SITUATION:
+- Discord mood: {events.get('discord_sentiment', 'neutral')}
+- Recent commits: {len(events.get('recent_commits', []))}
+- PRs merged: {events.get('pull_requests_merged', 0)}{highlights_text}
 
-    - If it results in a positional change (especially if it is to do with the top spots)
-    - Any major fouls (e.g. serious negative language, or mountainous merge conflicts)
-    - Any clutch moments (e.g. huge pull requests, or last minute bug fixes)
-    - Any moments of brilliance (e.g. perfect commit names, or well-timed positive messages)
-    - Any moments of failure (e.g last minute bug fixes)
+COMMENTARY STYLE: {STYLE_MAPPING.get(style, STYLE_MAPPING["calm"])["description"]}
 
+CRITICAL RULES:
+1. If notable moments are listed above, YOU MUST mention the specific people BY NAME and what they did
+2. Be specific - don't say "toxic behavior", say "Dave just called Mike's code garbage!"
+3. Use football terms: howler, screamer, red card, yellow card, own goal, hat trick, VAR check
+4. Match the energy to the style - calm is measured, poetic is flowery, super_angry is EXPLOSIVE
 
-    Use football-like terminology to describe the events (e.g. 'howler' for big blunders and 'screamers' for insane positive moments)
-
-    Output should be short and snappy - no more than 2 sentences, with a word cap of 40.
-
-    """
+Output: 1-2 sentences, max 40 words. No asterisks or markdown."""
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {'Content-Type': 'application/json'}
