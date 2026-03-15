@@ -23,7 +23,7 @@
             commentaryHistory: [],
             currentlyPlaying: null,
             isPlaying: false,
-            countdown: 60,
+            countdown: 20,
             isFetching: false,
             playCommentary(entryId) {
                 const audioPlayer = document.getElementById('commentary-audio');
@@ -56,7 +56,7 @@
                     console.error('Commentary fetch failed:', e);
                 }
                 this.isFetching = false;
-                this.countdown = 60;
+                this.countdown = 20;
             }
         }"
         x-init="
@@ -315,7 +315,7 @@
             </div>
 
             <div class="py-8 text-center text-sm text-slate-500" x-show="commentaryHistory.length === 0" x-cloak>
-                No commentary yet. Commentary will appear here every 60 seconds.
+                No commentary yet. Commentary will appear here every 20 seconds.
             </div>
         </section>
     </div>
