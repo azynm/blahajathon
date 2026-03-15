@@ -44,7 +44,7 @@ last_generated = {}      # {dashboard_id: timestamp of last generation}
 
 # Discord API cache to reduce rate limiting
 discord_cache = {}  # {cache_key: {"data": ..., "timestamp": ...}}
-CACHE_TTL = 60  # Cache TTL in seconds
+CACHE_TTL = 300  # Cache TTL in seconds (5 minutes)
 
 def get_cached(key):
     """Get cached data if not expired."""
@@ -81,29 +81,53 @@ def index():
     bot_server_ids = get_cached("bot_server_ids")
     if bot_server_ids is None:
         print("[DISCORD API] GET /users/@me/guilds (bot token) - index page load")
-        bot_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"}).json()
-        if not isinstance(bot_servers, list):
-            # Bot token error - clear session and re-login
+        bot_resp = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bot {BOT_TOKEN}"})
+        if bot_resp.status_code == 429:
+            print(f"[RATE LIMITED] bot guilds call, retry_after={bot_resp.json().get('retry_after', '?')}")
+            bot_server_ids = []
+        elif not bot_resp.ok:
             return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
-        bot_server_ids = []
-        for g in bot_servers:
-            print(f"[DISCORD API] get_repo_name for guild {g['id']} - index page load")
-            name = get_repo_name(g["id"], {"Authorization": f"Bot {BOT_TOKEN}"})
-            if name is not None:
-                bot_server_ids.append(g["id"])
-        set_cached("bot_server_ids", bot_server_ids)
+        else:
+            bot_servers = bot_resp.json()
+            if not isinstance(bot_servers, list):
+                return render_template("login.html", step=1, discord_auth_url=DISCORD_AUTH_URL, github_auth_url=GITHUB_AUTH_URL)
+            bot_server_ids = []
+            for g in bot_servers:
+                # Check per-guild cache first
+                repo_cache_key = f"repo_name_{g['id']}"
+                cached_name = get_cached(repo_cache_key)
+                if cached_name is not None:
+                    if cached_name != "__none__":
+                        bot_server_ids.append(g["id"])
+                    continue
+                print(f"[DISCORD API] get_repo_name for guild {g['id']} - index page load")
+                name = get_repo_name(g["id"], {"Authorization": f"Bot {BOT_TOKEN}"})
+                set_cached(repo_cache_key, name if name is not None else "__none__")
+                if name is not None:
+                    bot_server_ids.append(g["id"])
+                time.sleep(0.3)  # Rate limit protection between guilds
+            set_cached("bot_server_ids", bot_server_ids)
 
     #Get all the servers the user is in (cached per user)
     user_cache_key = f"user_servers_{session.get('username', 'unknown')}"
     user_servers = get_cached(user_cache_key)
     if user_servers is None:
         print("[DISCORD API] GET /users/@me/guilds (user token) - index page load")
-        user_servers = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bearer {session['discord_access_token']}"}).json()
-        if not isinstance(user_servers, list):
-            # Token expired or invalid - clear session and re-login
+        user_resp = requests.get("https://discord.com/api/users/@me/guilds", headers={"Authorization": f"Bearer {session['discord_access_token']}"})
+        if user_resp.status_code == 429:
+            # Rate limited - use empty list but don't nuke the session
+            print(f"[RATE LIMITED] user guilds call, retry_after={user_resp.json().get('retry_after', '?')}")
+            user_servers = []
+        elif user_resp.status_code == 401:
+            # Token actually expired - clear session and re-login
             session.clear()
             return redirect(url_for('index'))
-        set_cached(user_cache_key, user_servers)
+        else:
+            user_servers = user_resp.json()
+            if not isinstance(user_servers, list):
+                session.clear()
+                return redirect(url_for('index'))
+            set_cached(user_cache_key, user_servers)
 
     #Make a list of all servers we can participate in
     servers = []
