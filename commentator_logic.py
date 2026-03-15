@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import time
 from github_logic import get_detailed_github_data
-from discord_logic import fetch_all_messages, analyse_sentiment
+from discord_logic import fetch_all_messages, analyse_sentiment, read_storage, update_storage
 from scoring_logic import update_scores
 
 CACHE_DIR = "audio_cache"
@@ -286,6 +286,7 @@ def collect_events(dashboard_id, discord_headers, github_headers, repo_name):
                         "lines_changed": 100,
                     })
         update_scores(discord_messages, sentiment, github_data)
+
         return events
     else:
         return None
