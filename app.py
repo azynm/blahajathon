@@ -1,6 +1,7 @@
 from flask import Flask, redirect, url_for, session, request, render_template, Response, jsonify
 import os
 from dotenv import load_dotenv
+from google import generativeai
 load_dotenv(override=True)
 
 import hashlib
@@ -16,6 +17,8 @@ from commentator.commentator import determine_style, generate_script, generate_a
 from werkzeug.utils import secure_filename
 from datetime import datetime, timedelta
 import time
+import gunicorn
+import elevenlabs
 
 #Setup constants
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
@@ -23,9 +26,10 @@ DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-REDIRECT_URI = "http://127.0.0.1:5000/discord_callback"
+APP_URL = os.getenv("APP_URL", "http://127.0.0.1:5000")
+REDIRECT_URI = f"{APP_URL}/discord_callback"
 DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=65536&prompt=consent"
-GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=repo" 
+GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&redirect_uri={APP_URL}/github_callback&scope=repo" 
 
 #Start Flask app
 app = Flask(__name__)
@@ -413,6 +417,7 @@ def leaderboard_api():
     return jsonify(leaderboard)
 
 
-#Actually starts web server
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
