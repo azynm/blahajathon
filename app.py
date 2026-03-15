@@ -27,14 +27,16 @@ GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 REDIRECT_URI = "http://127.0.0.1:5000/discord_callback"
-DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=268437520&prompt=consent"
-GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&scope=repo" 
+GITHUB_REDIRECT_URI = "http://127.0.0.1:5000/github_callback"
+DISCORD_AUTH_URL = f"https://discord.com/api/oauth2/authorize?client_id={DISCORD_CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope=identify+guilds+bot&permissions=268437520"
+GITHUB_AUTH_URL = f"https://github.com/login/oauth/authorize?client_id={GITHUB_CLIENT_ID}&redirect_uri={GITHUB_REDIRECT_URI}&scope=repo" 
 
 #Start Flask app
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = "bum4"
 app.config['UPLOAD_FOLDER'] = str(Path("static") / "uploads")
+app.permanent_session_lifetime = timedelta(days=7)
 
 # Global state for commentary caching
 commentary_history = {}  # {dashboard_id: [list of commentary entries]}
@@ -108,6 +110,7 @@ def discord_callback():
     r = requests.post("https://discord.com/api/oauth2/token", data=data).json()
     
     #Get new access token
+    session.permanent = True
     session['discord_access_token'] = r.get('access_token')
     
     #Get username
@@ -119,16 +122,27 @@ def discord_callback():
 
 #Github callback page
 @app.route('/github_callback')
-def github_callback(): 
+def github_callback():
     #Get code from Github callback for handshake
     code = request.args.get('code')
-    
-    data = {'client_id': GITHUB_CLIENT_ID, 'client_secret': GITHUB_CLIENT_SECRET, 'code': code}
+
+    if not code:
+        # No code provided, redirect back to login
+        return redirect(url_for('index'))
+
+    data = {'client_id': GITHUB_CLIENT_ID, 'client_secret': GITHUB_CLIENT_SECRET, 'code': code, 'redirect_uri': GITHUB_REDIRECT_URI}
     r = requests.post("https://github.com/login/oauth/access_token", data=data, headers={'Accept': 'application/json'}).json()
-    
+
     #Get new access token
-    session['github_access_token'] = r.get('access_token')
-    
+    access_token = r.get('access_token')
+    if not access_token:
+        # Token exchange failed, clear any partial state and redirect
+        session.pop('github_access_token', None)
+        return redirect(url_for('index'))
+
+    session.permanent = True
+    session['github_access_token'] = access_token
+
     return redirect(url_for('index'))
 
 #Dashboard page for each league/server
