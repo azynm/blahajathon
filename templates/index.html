@@ -50,7 +50,7 @@
 
         // Add guild_id to your state object
         url.searchParams.set('state', JSON.stringify({
-            guild_id: guildId,
+            guild_id: guildId, // <--- Add this
             repo: this.selectedRepo,
             duration: this.leagueDuration,
             chaos: this.chaosMode

@@ -1,0 +1,282 @@
+{
+  "messages": [
+    {
+      "author": "azynm",
+      "content": "Morning team! Just pushed the initial API scaffold, looking really clean",
+      "timestamp": "2026-03-15T09:00:00.000Z",
+      "reactions": [{"emoji": {"name": "thumbsup"}, "count": 3}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "Love it! Frontend wireframes are done too, ready for integration",
+      "timestamp": "2026-03-15T09:02:00.000Z",
+      "reactions": [{"emoji": {"name": "fire"}, "count": 2}]
+    },
+    {
+      "author": "sophacode",
+      "content": "Database schema looks great, all migrations passing perfectly",
+      "timestamp": "2026-03-15T09:05:00.000Z",
+      "reactions": [{"emoji": {"name": "heart"}, "count": 2}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "Solid start everyone! This team is amazing, let's keep the momentum",
+      "timestamp": "2026-03-15T09:08:00.000Z",
+      "reactions": [{"emoji": {"name": "raised_hands"}, "count": 4}]
+    },
+    {
+      "author": "azynm",
+      "content": "Agreed! We're in a great spot, really proud of what we're building",
+      "timestamp": "2026-03-15T09:10:00.000Z",
+      "reactions": [{"emoji": {"name": "100"}, "count": 3}]
+    },
+
+    {
+      "author": "lackshaj",
+      "content": "The auth module keeps failing... this is getting really frustrating",
+      "timestamp": "2026-03-15T09:30:00.000Z",
+      "reactions": [{"emoji": {"name": "disappointed"}, "count": 2}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "I told you we should have used a different library, this one has issues",
+      "timestamp": "2026-03-15T09:32:00.000Z",
+      "reactions": []
+    },
+    {
+      "author": "sophacode",
+      "content": "The deadline is creeping up and we're falling behind schedule. Worried",
+      "timestamp": "2026-03-15T09:35:00.000Z",
+      "reactions": [{"emoji": {"name": "cold_sweat"}, "count": 3}]
+    },
+    {
+      "author": "azynm",
+      "content": "Team Alpha already has their demo working. We need to pick up the pace",
+      "timestamp": "2026-03-15T09:37:00.000Z",
+      "reactions": [{"emoji": {"name": "eyes"}, "count": 2}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "Nothing is working the way it should. Starting to lose hope honestly",
+      "timestamp": "2026-03-15T09:40:00.000Z",
+      "reactions": [{"emoji": {"name": "sob"}, "count": 4}]
+    },
+
+    {
+      "author": "aadideepchand20",
+      "content": "WHO THE HELL PUSHED TO MAIN WITHOUT TESTING?! ARE YOU BLOODY KIDDING ME",
+      "timestamp": "2026-03-15T10:00:00.000Z",
+      "reactions": [{"emoji": {"name": "rage"}, "count": 5}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "Don't you dare blame me for this crap, I'm sick of being the scapegoat",
+      "timestamp": "2026-03-15T10:01:00.000Z",
+      "reactions": [{"emoji": {"name": "angry"}, "count": 3}]
+    },
+    {
+      "author": "azynm",
+      "content": "The whole damn build is screwed. What kind of idiot doesn't follow git rules",
+      "timestamp": "2026-03-15T10:02:00.000Z",
+      "reactions": [{"emoji": {"name": "skull"}, "count": 4}]
+    },
+    {
+      "author": "sophacode",
+      "content": "You're all pissing me off! Stop pointing fingers and fix the damn thing",
+      "timestamp": "2026-03-15T10:03:00.000Z",
+      "reactions": [{"emoji": {"name": "rage"}, "count": 3}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "This is absolute garbage. Hours of work destroyed because someone's incompetent",
+      "timestamp": "2026-03-15T10:05:00.000Z",
+      "reactions": [{"emoji": {"name": "angry"}, "count": 5}]
+    },
+
+    {
+      "author": "azynm",
+      "content": "Hey everyone, I fixed the issue. Build is green again, we're back on track!",
+      "timestamp": "2026-03-15T10:20:00.000Z",
+      "reactions": [{"emoji": {"name": "tada"}, "count": 4}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "Amazing work Zayn! The frontend is looking beautiful now",
+      "timestamp": "2026-03-15T10:22:00.000Z",
+      "reactions": [{"emoji": {"name": "heart"}, "count": 3}]
+    },
+    {
+      "author": "sophacode",
+      "content": "All tests passing! Great teamwork everyone, really proud of us",
+      "timestamp": "2026-03-15T10:25:00.000Z",
+      "reactions": [{"emoji": {"name": "white_check_mark"}, "count": 5}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "The leaderboard feature looks incredible! We're going to nail this demo",
+      "timestamp": "2026-03-15T10:28:00.000Z",
+      "reactions": [{"emoji": {"name": "fire"}, "count": 3}]
+    },
+    {
+      "author": "azynm",
+      "content": "Best team ever! Let's ship this thing and win the hackathon",
+      "timestamp": "2026-03-15T10:30:00.000Z",
+      "reactions": [{"emoji": {"name": "rocket"}, "count": 4}, {"emoji": {"name": "muscle"}, "count": 3}]
+    },
+
+    {
+      "author": "sophacode",
+      "content": "The API is timing out under load... this could be a problem for the demo",
+      "timestamp": "2026-03-15T10:50:00.000Z",
+      "reactions": [{"emoji": {"name": "warning"}, "count": 2}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "Great, another thing breaking. We just can't catch a break today",
+      "timestamp": "2026-03-15T10:52:00.000Z",
+      "reactions": [{"emoji": {"name": "weary"}, "count": 3}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "I checked Team Beta's demo... honestly theirs looks better than ours",
+      "timestamp": "2026-03-15T10:55:00.000Z",
+      "reactions": [{"emoji": {"name": "disappointed"}, "count": 2}]
+    },
+    {
+      "author": "azynm",
+      "content": "Don't say that. We've worked so hard. But the pressure is definitely real",
+      "timestamp": "2026-03-15T10:57:00.000Z",
+      "reactions": []
+    },
+    {
+      "author": "sophacode",
+      "content": "45 minutes left and half the features are buggy. I'm seriously stressing",
+      "timestamp": "2026-03-15T11:00:00.000Z",
+      "reactions": [{"emoji": {"name": "scream"}, "count": 4}]
+    },
+
+    {
+      "author": "lackshaj",
+      "content": "THE DATABASE JUST WIPED ITSELF. WHAT THE ACTUAL HELL IS HAPPENING",
+      "timestamp": "2026-03-15T11:10:00.000Z",
+      "reactions": [{"emoji": {"name": "scream"}, "count": 6}]
+    },
+    {
+      "author": "azynm",
+      "content": "Are you freaking kidding me?! Who ran migrations on prod? That's so damn stupid",
+      "timestamp": "2026-03-15T11:11:00.000Z",
+      "reactions": [{"emoji": {"name": "rage"}, "count": 4}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "I swear to god if we lose because of this BS I'm going to lose my mind",
+      "timestamp": "2026-03-15T11:12:00.000Z",
+      "reactions": [{"emoji": {"name": "angry"}, "count": 5}]
+    },
+    {
+      "author": "sophacode",
+      "content": "This is a complete dumpster fire. How the hell did nobody set up backups",
+      "timestamp": "2026-03-15T11:13:00.000Z",
+      "reactions": [{"emoji": {"name": "skull"}, "count": 5}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "Every time we make progress someone screws it up. I'm done with this crap",
+      "timestamp": "2026-03-15T11:15:00.000Z",
+      "reactions": [{"emoji": {"name": "rage"}, "count": 4}]
+    },
+
+    {
+      "author": "sophacode",
+      "content": "Wait! I found a backup from 20 minutes ago. We can restore everything!",
+      "timestamp": "2026-03-15T11:25:00.000Z",
+      "reactions": [{"emoji": {"name": "tada"}, "count": 7}]
+    },
+    {
+      "author": "azynm",
+      "content": "Sophia you absolute legend! You just saved our entire project",
+      "timestamp": "2026-03-15T11:26:00.000Z",
+      "reactions": [{"emoji": {"name": "heart"}, "count": 5}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "Everything is back online! All endpoints responding perfectly. We're good!",
+      "timestamp": "2026-03-15T11:30:00.000Z",
+      "reactions": [{"emoji": {"name": "white_check_mark"}, "count": 6}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "Just finished the UI polish. It looks absolutely stunning now",
+      "timestamp": "2026-03-15T11:33:00.000Z",
+      "reactions": [{"emoji": {"name": "fire"}, "count": 4}]
+    },
+    {
+      "author": "azynm",
+      "content": "We're ready for the demo! So proud of this team, we've got this!",
+      "timestamp": "2026-03-15T11:35:00.000Z",
+      "reactions": [{"emoji": {"name": "muscle"}, "count": 5}, {"emoji": {"name": "100"}, "count": 4}]
+    },
+
+    {
+      "author": "aadideepchand20",
+      "content": "Judges are setting up now. I feel sick to my stomach honestly",
+      "timestamp": "2026-03-15T11:50:00.000Z",
+      "reactions": [{"emoji": {"name": "nauseated_face"}, "count": 2}]
+    },
+    {
+      "author": "lackshaj",
+      "content": "What if the live demo crashes? We haven't tested under real load",
+      "timestamp": "2026-03-15T11:52:00.000Z",
+      "reactions": [{"emoji": {"name": "cold_sweat"}, "count": 3}]
+    },
+    {
+      "author": "sophacode",
+      "content": "Found a bug in the scoring display. We have 5 minutes to fix it",
+      "timestamp": "2026-03-15T11:55:00.000Z",
+      "reactions": [{"emoji": {"name": "warning"}, "count": 4}]
+    },
+    {
+      "author": "azynm",
+      "content": "Not now... not right before we present. This can't be happening",
+      "timestamp": "2026-03-15T11:56:00.000Z",
+      "reactions": [{"emoji": {"name": "scream"}, "count": 3}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "Every other team looks confident. We look like we're falling apart",
+      "timestamp": "2026-03-15T11:58:00.000Z",
+      "reactions": [{"emoji": {"name": "pensive"}, "count": 2}]
+    },
+
+    {
+      "author": "lackshaj",
+      "content": "IT CRASHED! THE WHOLE BLOODY THING CRASHED! I WANT TO SCREAM RIGHT NOW",
+      "timestamp": "2026-03-15T12:00:00.000Z",
+      "reactions": [{"emoji": {"name": "rage"}, "count": 6}]
+    },
+    {
+      "author": "azynm",
+      "content": "How the hell does this keep happening?! We tested this a hundred times!",
+      "timestamp": "2026-03-15T12:01:00.000Z",
+      "reactions": [{"emoji": {"name": "angry"}, "count": 4}]
+    },
+    {
+      "author": "aadideepchand20",
+      "content": "This is such BS! We deserve better after pulling an all-nighter for this",
+      "timestamp": "2026-03-15T12:02:00.000Z",
+      "reactions": [{"emoji": {"name": "rage"}, "count": 5}]
+    },
+    {
+      "author": "sophacode",
+      "content": "STOP PANICKING AND RESTART THE DAMN SERVER RIGHT NOW!",
+      "timestamp": "2026-03-15T12:03:00.000Z",
+      "reactions": []
+    },
+    {
+      "author": "lackshaj",
+      "content": "I hate hackathons, I hate coding, I hate absolutely everything right now",
+      "timestamp": "2026-03-15T12:04:00.000Z",
+      "reactions": [{"emoji": {"name": "sob"}, "count": 7}]
+    }
+  ]
+}

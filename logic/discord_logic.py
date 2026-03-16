@@ -6,17 +6,62 @@ import time
 import json
 import requests
 from datetime import datetime, timedelta
+from pathlib import Path
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-REPO_NAME = {}
+USE_DUMMY_MESSAGES = os.getenv("USE_DUMMY_MESSAGES", "false").lower() == "true"
+channels = 0
+
+# Dummy message state tracking
+_dummy_message_index = 0
+
+def load_dummy_messages():
+    """Load messages from the dummy JSON file, returning only valid message dicts."""
+    dummy_path = Path(__file__).parent.parent / "data" / "dummy_messages.json"
+    try:
+        with open(dummy_path, "r") as f:
+            data = json.load(f)
+        msgs = data.get("messages", [])
+        # Only keep dicts with required keys
+        valid_msgs = [
+            m for m in msgs
+            if isinstance(m, dict) and "author" in m and "content" in m and "reactions" in m
+        ]
+        if len(valid_msgs) < len(msgs):
+            print(f"WARNING: Some dummy messages were skipped due to missing fields or wrong type.")
+        return valid_msgs
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print(f"WARNING: Failed to load dummy messages: {e}")
+        return []
+
+def fetch_dummy_messages(batch_size=5):
+    """Return next batch of dummy messages, cycling through the list."""
+    global _dummy_message_index
+
+    all_messages = load_dummy_messages()
+    if not all_messages:
+        return []
+
+    start = _dummy_message_index
+    end = min(start + batch_size, len(all_messages))
+    batch = all_messages[start:end]
+
+    # Cycle back to start if we've reached the end
+    _dummy_message_index = end if end < len(all_messages) else 0
+
+    return batch
 
 def fetch_all_messages(dashboard_id, headers, last_time):
+    #Use dummy messages in demo mode
+    if USE_DUMMY_MESSAGES:
+        print("DEBUG: Using dummy messages")
+        return fetch_dummy_messages()    
+
     #Fetch a list of all channels in the server
     r = requests.get(f"https://discord.com/api/v10/guilds/{dashboard_id}/channels", headers=headers)
     if r.status_code != 200:
-        print(f"DEBUG ERROR: Could not fetch channels for {dashboard_id}. Code: {r.status_code}")
-        return []
-    
+        return f"Error: Could not fetch channels. Is the bot in the server? (Code: {r.status_code})"
+
     #Filter for text channels and scrape messages
     channels = r.json()
     
@@ -43,12 +88,9 @@ def fetch_latest_messages(channel_id, headers, since_datetime):
         
         #Format data
         data = r.json()
-        if not data or not isinstance(data, list): # Check if data is actually a list
-            break
+        if not data:
+            break 
         for m in data:
-            author_data = m.get('author')
-            if not author_data or not isinstance(author_data, dict):
-                continue
             all_messages.append({
                 "author": m['author']['username'],
                 "content": m['content'],
@@ -61,7 +103,7 @@ def fetch_latest_messages(channel_id, headers, since_datetime):
             break
 
         #Prepare for next loop
-        after_id = data[-1]['id'] 
+        after_id = data[0]['id'] 
 
     return all_messages
     
@@ -142,10 +184,6 @@ If nothing notable happened, use an empty list for highlights."""
     return {"overall": "neutral", "highlights": []}
 
 def get_repo_name(guild_id, discord_headers):
-    global REPO_NAME
-    if guild_id in REPO_NAME:
-        return REPO_NAME[guild_id]
-    
     r = requests.get(f"https://discord.com/api/v10/guilds/{guild_id}/channels", headers=discord_headers)
     if r.status_code == 429:
             time.sleep(r.json().get('retry_after', 1))
@@ -155,25 +193,22 @@ def get_repo_name(guild_id, discord_headers):
 
     #Filter for text channels and scrape messages
     channels = r.json()
-    config_channel = next(
-        (c for c in channels if c['name'] == 'bot-internal-config' and c['type'] == 0), 
-        None
-    )
+    
+    config_channel = next((c for c in channels if c['name'] == 'bot-internal-config'), None)
 
     if config_channel:
+        # Fetch the first message in that channel
         msg_resp = requests.get(f"https://discord.com/api/v10/channels/{config_channel['id']}/messages?limit=1", headers=discord_headers)
         if msg_resp.status_code == 429:
             time.sleep(msg_resp.json().get('retry_after', 1))
             return get_repo_name(guild_id, discord_headers)
         messages = msg_resp.json()
         if messages:
-            print(json.loads(messages[0]['content']))
-            REPO_NAME[guild_id] = json.loads(messages[0]['content'])['repo']
-            return REPO_NAME[guild_id]
+            return messages[0]['content']
     else:
         return None
     
-def create_storage_channel(guild_id, repo_name, duration, discord_headers):
+def create_storage_channel(guild_id, repo_name, discord_headers):
     global channels
     create_payload = {
             "name": "bot-internal-config",
@@ -187,7 +222,7 @@ def create_storage_channel(guild_id, repo_name, duration, discord_headers):
     time.sleep(0.5)
 
     if 'id' in new_chan:
-        data = {"repo": repo_name, "duration": duration}
+        data = {"repo": repo_name}
         # Success! Save the data.
         requests.post(f"https://discord.com/api/v10/channels/{new_chan['id']}/messages", 
                         headers=discord_headers, json={"content": json.dumps(data)})
